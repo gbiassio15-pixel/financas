@@ -795,11 +795,11 @@ function fbScripts() {
 }
 async function syncInit() {
   if (!FB_CFG) return;
-  try { await fbScripts(); } catch (e) { SYNC.estado = 'offline'; return; }
+  try { await fbScripts(); } catch (e) { SYNC.estado = 'offline'; if (!S.eu) render(); return; }
   firebase.initializeApp(FB_CFG);
   SYNC.db = firebase.firestore();
   try { await SYNC.db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
-  firebase.auth().onAuthStateChanged(u => { SYNC.user = u; if (u && u.emailVerified) iniciaSync(); else paraSync(); renderSuave(true); });
+  firebase.auth().onAuthStateChanged(u => { SYNC.user = u; if (u && u.emailVerified) iniciaSync(); else paraSync(); if (!S.eu) render(); else renderSuave(true); });
 }
 const famRef = () => SYNC.db.collection('fam').doc('familia');
 function iniciaSync() {
@@ -880,6 +880,7 @@ function recebeCfg(snap) {
   if (docs.pessoas && (docs.pessoas.upd || 0) > (S.pessoasUpd || 0)) { S.pessoas = docs.pessoas.pessoas; S.pessoasUpd = docs.pessoas.upd; }
   if (docs.orc) { S.orcUpd = S.orcUpd || {}; for (const k in docs.orc.orcUpd || {}) if (docs.orc.orcUpd[k] > (S.orcUpd[k] || 0)) { if (docs.orc.orc[k] > 0) S.orc[k] = docs.orc.orc[k]; else delete S.orc[k]; S.orcUpd[k] = docs.orc.orcUpd[k]; } }
   for (const n in docs) S.sync.cfg[n] = JSON.stringify(docs[n]);
+  { const e = emailDe(SYNC.user), p = S.eu && pessoa(S.eu); if (e && p && !p.email && !S.pessoas.some(o => String(o.email || '').toLowerCase() === e)) { p.email = e; S.pessoasUpd = Date.now(); } }
   SYNC.estado = 'ok'; SYNC.ultimo = Date.now();
   salvaLocal(); renderSuave(); agendaPush();
 }
@@ -1039,7 +1040,7 @@ document.addEventListener('click', e => {
 });
 function render() {
   renderNav();
-  if (!S.eu) return renderBoasVindas();
+  if (!S.eu) return renderEntrada();
   ({ resumo: rResumo, lanc: rLanc, importar: rImportar, dividas: rDividas, ajustes: rAjustes, fixas: rFixas, ano: rAno })[V.tab]();
 }
 function toast(msg) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
@@ -1060,42 +1061,28 @@ document.addEventListener('click', e => {
 document.addEventListener('click', e => { if (e.target.closest('[data-dicaios]')) { S.dicaIos = true; salvaLocal(); render(); } if (e.target.closest('[data-dicasync]')) { S.dicaSync = true; salvaLocal(); render(); } });
 
 // ================= boas-vindas =================
-function renderNomes() {
-  const campo = (p, n) => `<div class="card"><h2>${n}</h2>
-    <label class="l">Como chamar</label><input class="f" id="nm-${p.id}" placeholder="Ex.: Ana" value="${esc(p.nome)}" autocomplete="off">
-    <label class="l" style="margin-top:8px">Nome completo, como aparece no Pix (opcional)</label><input class="f" id="nc-${p.id}" placeholder="Ex.: ANA MARIA DA SILVA" value="${esc(p.aliases.join(', '))}" autocomplete="off"></div>`;
-  $('#app').innerHTML = `<div style="padding-top:6vh">
-    <img src="gema-192.png" alt="" style="width:72px;height:72px;border-radius:18px">
-    <h1 style="font-size:28px;margin:10px 0 6px">GeMa</h1>
-    <p class="muted">Importe os extratos e faturas dos bancos e veja para onde vai o dinheiro da casa. Os dados ficam guardados neste celular.</p>
-    <p class="small muted" style="margin-top:18px">Primeiro, os nomes de vocês dois. O nome completo serve para reconhecer Pix entre vocês como transferência, e não como gasto.</p>
-    ${campo(S.pessoas[0], 'Pessoa 1')}${campo(S.pessoas[1], 'Pessoa 2')}
-    <button class="btn pri full" id="nm-ok">Continuar</button></div>`;
+// primeira tela: login (traz tudo da nuvem) ou pular e usar só neste celular
+const emailDe = u => String((u && u.email) || '').toLowerCase();
+function pessoaDoEmail(u) { const e = emailDe(u); return e ? S.pessoas.find(p => String(p.email || '').toLowerCase() === e) : null; }
+function renderEntrada() {
   $('#nav').innerHTML = '';
-  $('#nm-ok').onclick = () => {
-    const vals = S.pessoas.map(p => [p, $('#nm-' + p.id).value.trim(), $('#nc-' + p.id).value]);
-    if (vals.some(v => !v[1])) { toast('Preencha como chamar cada um'); return; }
-    for (const [p, nome, comp] of vals) {
-      p.nome = nome;
-      const al = comp.split(',').map(x => x.trim()).filter(Boolean);
-      p.aliases = al.length ? al : [nome];
-    }
-    S.pessoasUpd = Date.now(); save(false); render();
-  };
+  const u = SYNC.user, topo = `<div style="padding-top:6vh;text-align:center"><img src="gema-192.png" alt="" style="width:76px;height:76px;border-radius:20px"><h1 style="font-size:30px;margin:10px 0 4px">GeMa</h1><p class="muted" style="margin:0 0 18px">As finanças da família num lugar só.</p></div>`;
+  // conectado: espera os dados da nuvem e reconhece a pessoa pelo e-mail
+  if (u && u.emailVerified && SYNC.on) {
+    const p = pessoaDoEmail(u);
+    if (p) { S.eu = p.id; save(false); return render(); }
+    if (SYNC.estado !== 'ok') { $('#app').innerHTML = topo + `<div class="card empty"><div class="e">${ti('cloud-download', 40)}</div>Trazendo os dados da nuvem…</div>`; return; }
+    // e-mail ainda não conhecido: fica com a pessoa que está sem e-mail (dá para trocar em Ajustes)
+    const livre = S.pessoas.find(p => !p.email) || S.pessoas[0];
+    livre.email = emailDe(u); S.pessoasUpd = Date.now(); S.eu = livre.id; save(false); return render();
+  }
+  const carregando = FB_CFG && !window.firebase && SYNC.estado !== 'offline';
+  $('#app').innerHTML = topo + (carregando ? `<div class="card empty small">${ti('cloud', 18, 'style="vertical-align:-3px"')} Preparando o login…</div>` : FB_CFG ? cardSync() : '') + `<button class="btn full" id="ent-pular" style="margin-top:6px;background:none">Pular e entrar depois</button>
+    <p class="tiny" style="text-align:center">Sem entrar, os dados ficam só neste celular. Dá para entrar depois em Ajustes.</p>`;
+  if (FB_CFG && window.firebase) ligaCardSync();
+  $('#ent-pular').onclick = () => { S.eu = S.eu || 'p1'; S.pulouLogin = true; save(false); render(); };
 }
-function renderBoasVindas() {
-  if (S.pessoas.some(p => !p.nome)) return renderNomes();
-  $('#app').innerHTML = `<div style="padding-top:8vh">
-    <img src="gema-192.png" alt="" style="width:72px;height:72px;border-radius:18px">
-    <h1 style="font-size:28px;margin:10px 0 6px">GeMa</h1>
-    <p class="muted">Importe os extratos e faturas dos bancos e veja para onde vai o dinheiro da casa. Os dados ficam guardados neste celular.</p>
-    <div class="card" style="margin-top:22px"><h2>Quem usa este celular?</h2>
-    <p class="small muted" style="margin-top:-4px">Serve para dar nome aos backups e saber de quem são as contas que você importa.</p>
-    ${S.pessoas.map(p => `<button class="btn full" style="margin-top:8px;justify-content:flex-start" data-eu="${p.id}"><span class="ic" style="width:32px;height:32px;font-size:15px;background:var(--${p.id}bg);color:var(--${p.id})">${esc(p.nome[0])}</span>${esc(p.nome)}</button>`).join('')}
-    </div>
-    <p class="tiny">Já tem um backup? Escolha quem você é e depois vá em Ajustes → Abrir backup.</p></div>`;
-  $('#nav').innerHTML = '';
-}
+document.addEventListener('click', e => { if (e.target.closest('[data-irpessoas]')) { V.tab = 'ajustes'; render(); setTimeout(() => { const x = document.querySelector('#aj-pessoas'); if (x) x.scrollIntoView({ behavior: 'smooth' }); }, 50); } });
 document.addEventListener('click', e => { const b = e.target.closest('[data-eu]'); if (b) { S.eu = b.dataset.eu; save(false); render(); } });
 
 // ================= RESUMO =================
@@ -1181,6 +1168,7 @@ function rResumo() {
   ${ios && !S.dicaIos ? `<div class="banner amb" style="align-items:flex-start">${ti('device-mobile-message', 18)} <span style="flex:1">No iPhone, o Safari pode apagar os dados de sites que ficam dias sem abrir. Toque em <b>Compartilhar → Adicionar à Tela de Início</b> e use o app por lá.</span><button class="iconbtn" data-dicaios aria-label="Fechar aviso" style="width:28px;height:28px;flex:none">${ti('x', 14)}</button></div>` : ''}
   ${FB_CFG && window.firebase && !SYNC.user && !S.dicaSync ? `<div class="banner acc" style="align-items:flex-start">${ti('cloud', 18)} <span style="flex:1" data-tab="ajustes">Sincronize os dois celulares: entre com o seu e-mail em <b>Ajustes</b>.</span><button class="iconbtn" data-dicasync aria-label="Fechar aviso" style="width:28px;height:28px;flex:none">${ti('x', 14)}</button></div>` : ''}
   ${SYNC.on && SYNC.estado === 'erro' ? `<div class="banner red" data-tab="ajustes" style="cursor:pointer">${ti('cloud-off', 18)} <span>${esc(SYNC.erro)}</span></div>` : ''}
+  ${S.pessoas.some(p => !p.nome) ? `<div class="banner acc" data-irpessoas style="cursor:pointer">${ti('users', 18)} <span>Coloque os nomes de vocês. <b>Ir para Ajustes</b></span></div>` : ''}
   ${semBackup ? `<div class="banner amb" data-tab="ajustes" style="cursor:pointer">${ti('device-floppy', 18)} <span>${S.mud} alteração(ões) sem backup. <b>Salvar agora</b></span></div>` : ''}
   <div class="hero">
     <div class="lbl">Saldo do mês</div><div class="big">${esc(brl(T.saldo))}</div>
@@ -2285,8 +2273,9 @@ function rAjustes() {
   <div class="card"><h2>Regras automáticas</h2><p class="small muted" style="margin-top:-4px">Criadas quando você corrige uma categoria. Toque para apagar.</p>
     <div class="list">${S.regras.filter(r => r.user).sort((a, b) => b.upd - a.upd).map(r => `<div class="it" data-dregra="${esc(r.k)}"><div class="mid"><div class="t">${esc(r.k)}</div><div class="s">→ ${esc([TIPOS[r.tipo], r.cat, r.sub].filter(Boolean).join(' › '))}</div></div><span class="tiny">apagar</span></div>`).join('') || '<div class="small muted">Nenhuma ainda.</div>'}</div>
     <div class="tiny" style="margin-top:8px">${S.regras.filter(r => !r.user).length} regras prontas (Copel, Sanepar, posto, padaria…).</div></div>
-  <div class="card"><h2>Nomes de vocês nos extratos</h2><p class="small muted" style="margin-top:-4px">Pix entre esses nomes vira transferência, e não entrada ou despesa.</p>
-  ${S.pessoas.map(p => `<div class="grid2" style="margin-top:6px"><div><label class="l">Como chamar</label><input class="f" data-pnome="${p.id}" value="${esc(p.nome)}"></div><div><label class="l">Nomes no extrato</label><input class="f" data-alias="${p.id}" value="${esc(p.aliases.join(', '))}"></div></div>`).join('')}
+  <div class="card" id="aj-pessoas"><h2>Pessoas</h2><p class="small muted" style="margin-top:-4px">O nome completo como aparece no Pix serve para o app saber que um Pix entre vocês é transferência, e não entrada ou despesa. O e-mail é o do login: com ele, o app reconhece quem é em qualquer celular.</p>
+  ${S.pessoas.map((p, k) => `<div style="${k ? 'border-top:1px solid var(--line);margin-top:12px;padding-top:4px' : ''}"><div class="grid2"><div><label class="l">Como chamar</label><input class="f" data-pnome="${p.id}" value="${esc(p.nome)}" placeholder="Pessoa ${k + 1}"></div><div><label class="l">E-mail do login</label><input class="f" data-pemail="${p.id}" type="email" value="${esc(p.email || '')}" placeholder="opcional"></div></div>
+    <label class="l">Nome completo no Pix (pode pôr mais de um, separados por vírgula)</label><input class="f" data-alias="${p.id}" value="${esc(p.aliases.join(', '))}" placeholder="Ex.: ANA MARIA DA SILVA"></div>`).join('')}
   <label class="l">MEI ou outro negócio (textos que aparecem no extrato, como o CNPJ)</label><input class="f" id="mei" value="${esc((S.meiChaves || []).join(', '))}" placeholder="ex.: 12345678, 12.345.678">
   <div class="tiny" style="margin-top:4px">O que vem do MEI entra como “Retirada do MEI”. O que vai para ele é transferência, não gasto da casa.</div></div>
   <div class="card"><h2>Aparência</h2><div class="seg">${[['claro', 'Claro'], ['escuro', 'Escuro'], ['auto', 'Automático']].map(([k, n]) => `<button class="${temaAtual() === k ? 'on' : ''}" data-tema="${k}">${n}</button>`).join('')}</div><div class="tiny" style="margin-top:6px">Vale só para este celular. Automático segue o modo do iPhone.</div></div>
@@ -2300,7 +2289,8 @@ function rAjustes() {
   $('#nova-conta').onclick = () => editarConta(null);
   $('#nova-cat').onclick = () => editarCat(-1);
   $('#zerar').onclick = apagarDados;
-  document.querySelectorAll('[data-pnome]').forEach(i => i.onchange = () => { const v = i.value.trim(); if (!v) { i.value = pessoa(i.dataset.pnome).nome; return; } pessoa(i.dataset.pnome).nome = v; S.pessoasUpd = Date.now(); save(false); render(); toast('Salvo'); });
+  document.querySelectorAll('[data-pnome]').forEach(i => i.onchange = () => { const v = i.value.trim(); if (!v) { i.value = pessoa(i.dataset.pnome).nome; return; } const p = pessoa(i.dataset.pnome); p.nome = v; if (!p.aliases.length) p.aliases = [v]; S.pessoasUpd = Date.now(); save(false); render(); toast('Salvo'); });
+  document.querySelectorAll('[data-pemail]').forEach(i => i.onchange = () => { const v = i.value.trim().toLowerCase(), p = pessoa(i.dataset.pemail); if (v && S.pessoas.some(o => o !== p && String(o.email || '').toLowerCase() === v)) { toast('Esse e-mail já está com a outra pessoa'); i.value = p.email || ''; return; } if (v) p.email = v; else delete p.email; S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
   $('#mei').onchange = e => { S.meiChaves = e.target.value.split(',').map(x => x.trim()).filter(Boolean); P.meiChaves = S.meiChaves; S.cfgUpd = Object.assign(S.cfgUpd || {}, { mei: Date.now() }); save(false); toast('Salvo'); };
   document.querySelectorAll('[data-alias]').forEach(i => i.onchange = () => { pessoa(i.dataset.alias).aliases = i.value.split(',').map(x => x.trim()).filter(Boolean); S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
 }
