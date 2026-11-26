@@ -795,6 +795,29 @@ function saldoConta(c) {
   if (c.tipo === 'beneficio' || c.tipo === 'invest') return (c.saldoIni || 0) + L.reduce((a, t) => a + t.valor, 0);
   return null;
 }
+// saldo da conta no fim do dia "iso" (null se nunca foi informado)
+function saldoEm(c, iso) {
+  const L = live().filter(t => t.conta === c.id);
+  if (c.saldoRef) { const r = c.saldoRef.data; return c.saldoRef.valor + L.reduce((a, t) => a + (t.data > r && t.data <= iso ? t.valor : t.data <= r && t.data > iso ? -t.valor : 0), 0); }
+  if (c.tipo === 'beneficio' || c.tipo === 'invest') return (c.saldoIni || 0) + L.reduce((a, t) => a + (t.data <= iso ? t.valor : 0), 0);
+  return null;
+}
+// movimento da conta no mês: saldo inicial + receitas + transf. creditadas − transf. debitadas − despesas (+ ajustes) = saldo final
+function movMes(c, mk) {
+  const ini = saldoEm(c, P.addDays(mk + '-01', -1));
+  const m = { ini, rec: 0, tc: 0, td: 0, desp: 0, aj: 0 };
+  for (const t of live()) {
+    if (t.conta !== c.id || mkey(t.data) !== mk) continue;
+    if (t.tipo === 'receita' || t.tipo === 'entdivida') m.rec += t.valor;
+    else if (t.tipo === 'despesa' || t.tipo === 'pagdivida') m.desp -= t.valor;
+    else if (t.tipo === 'transf') { if (t.valor > 0) m.tc += t.valor; else m.td -= t.valor; }
+    else m.aj += t.valor; // ignorados (estornos, Pix devolvido…), que quase sempre se anulam
+  }
+  m.fim = ini == null ? null : ini + m.rec + m.tc - m.td - m.desp + m.aj;
+  return m;
+}
+const contasDoMes = mk => S.contas.filter(c => ['conta', 'invest', 'beneficio'].includes(c.tipo) && (V.quem === 'all' || c.dono === V.quem)).map(c => { const m = movMes(c, mk); return { c, s: m.fim, m }; });
+function totalContas(mk) { const L = contasDoMes(mk).filter(x => x.s != null); return L.length ? L.reduce((a, x) => a + x.s, 0) : null; }
 // ícone de cada banco: sigla nas cores do banco
 const BANCOS = [
   [/NUBANK|^NU\b/, 'Nu', '#820AD1', null, 'nubank'], [/SICREDI/, 'Si', '#3FA110', null, 'sicredi'], [/INTER\b/, 'In', '#FF7A00', null, 'inter'], [/MERCADO ?PAGO/, 'MP', '#009EE3', null, 'mercado-pago'],
@@ -1200,7 +1223,9 @@ function rResumo() {
   const meses = []; for (let i = 5; i >= 0; i--) { const mk = addMonth(V.mes, -i); meses.push([mk, totaisMes(mk)]); }
   const mx = Math.max(1, ...meses.map(([, t]) => Math.max(t.ent, t.desp)));
   const venc = proximosVenc();
-  const contasSaldo = S.contas.filter(c => ['conta', 'invest', 'beneficio'].includes(c.tipo) && (V.quem === 'all' || c.dono === V.quem)).map(c => ({ c, s: saldoConta(c) }));
+  const contasSaldo = contasDoMes(V.mes);
+  const totCx = contasSaldo.some(x => x.s != null) ? contasSaldo.reduce((a, x) => a + (x.s || 0), 0) : null;
+  const semSaldo = contasSaldo.filter(x => x.s == null).length;
   const revisar = live().filter(t => mkey(t.data) === V.mes && filtraQuem(t) && t.tipo === 'despesa' && !t.cat).length;
   const ios = /iP(hone|ad|od)/.test(navigator.userAgent) && !navigator.standalone && !window.matchMedia('(display-mode: standalone)').matches;
   const semBackup = !SYNC.on && S.mud > 0 && (!S.ultimoBackup || Date.now() - S.ultimoBackup > 3 * 864e5);
@@ -1218,8 +1243,9 @@ function rResumo() {
   ${S.pessoas.some(p => !p.nome) ? `<div class="banner acc" data-irpessoas style="cursor:pointer">${ti('users', 18)} <span>Coloque os nomes de vocês. <b>Ir para Ajustes</b></span></div>` : ''}
   ${semBackup ? `<div class="banner amb" data-tab="ajustes" style="cursor:pointer">${ti('device-floppy', 18)} <span>${S.mud} alteração(ões) sem backup. <b>Salvar agora</b></span></div>` : ''}
   <div class="hero">
-    <div class="lbl">Saldo do mês</div><div class="big">${esc(brl(T.saldo))}</div>
-    <div class="two"><div>${ti('arrow-down-left', 14)} Entradas<b>${esc(brl(T.ent))}</b></div><div style="text-align:right">${ti('arrow-up-right', 14)} Despesas<b>${esc(brl(T.desp))}</b></div></div>
+    <div class="lbl">${totCx != null ? 'Saldo nas contas' + (V.mes < mkey(today()) ? ' no fim do mês' : '') : 'Resultado do mês'}</div><div class="big">${esc(brl(totCx != null ? totCx : T.saldo))}</div>
+    ${totCx != null && semSaldo ? `<div class="small" style="color:inherit;opacity:.8;margin-top:2px">${semSaldo} conta(s) sem saldo informado ficaram de fora</div>` : ''}
+    <div class="two"><div>${ti('arrow-down-left', 14)} Receitas<b>${esc(brl(T.ent))}</b></div><div style="text-align:right">${ti('arrow-up-right', 14)} Despesas<b>${esc(brl(T.desp))}</b></div></div>
     ${prev ? `<div class="sep"><span>${ti('calendar-event', 15, 'style="vertical-align:-3px"')} Previsto no fim do mês</span><b style="font-size:15px">${esc(brl(prev.valor))}</b></div>` : ''}
     <div style="margin-top:10px"><span class="pill">${difDesp === 0 || !Ta.desp ? 'Sem comparação com o mês anterior' : (difDesp > 0 ? '▲ ' : '▼ ') + esc(brl0(Math.abs(difDesp))) + (difDesp > 0 ? ' a mais' : ' a menos') + ' de despesa que ' + MESC[+addMonth(V.mes, -1).slice(5) - 1]}</span></div>
   </div>
@@ -1257,8 +1283,8 @@ function rResumo() {
 }
 function cardSaldos(L) {
   const mk = V.mes;
-  const linha = ({ c, s }, sub) => { const r = rendeuMes(c, mk);
-    return `<div class="it" data-editconta="${c.id}" ${sub ? 'style="padding-left:22px"' : ''}>${sub ? `<div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti(c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'coins' : 'pig', 18)}</div>` : logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${sub ? (c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'Cotas capital · volta quando fechar a conta' : 'Cofrinho') : donoTag(c.dono)} ${c.saldoRef ? 'em ' + dshort(c.saldoRef.data) : c.tipo === 'conta' ? '' : 'estimado'}</div></div><div class="val ${s != null && s < 0 ? 'neg' : ''}">${s == null ? '<span class="tag amb">informar</span>' : esc(brl(s))}${r > 0.004 ? `<div class="tiny" style="color:var(--grn)">rendeu ${esc(brl(r))}</div>` : ''}</div></div>`; };
+  const linha = ({ c, s, m }, sub) => { const r = rendeuMes(c, mk); const aberto = V.abreConta === c.id && m && s != null;
+    return `<div class="it" ${s == null ? `data-editconta="${c.id}"` : `data-abreconta="${c.id}"`} ${sub ? 'style="padding-left:22px"' : ''}>${sub ? `<div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti(c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'coins' : 'pig', 18)}</div>` : logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${sub ? (c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'Cotas capital · volta quando fechar a conta' : 'Cofrinho') : donoTag(c.dono)} ${c.saldoRef ? 'em ' + dshort(c.saldoRef.data) : c.tipo === 'conta' ? '' : 'estimado'}</div></div><div class="val ${s != null && s < 0 ? 'neg' : ''}">${s == null ? '<span class="tag amb">informar</span>' : esc(brl(s))}${r > 0.004 ? `<div class="tiny" style="color:var(--grn)">rendeu ${esc(brl(r))}</div>` : ''}</div></div>${aberto ? detalheConta(c, m) : ''}`; };
   const grupo = (tipos, titulo) => {
     const G = L.filter(x => tipos.includes(x.c.tipo) && !(x.c.tipo === 'invest' && x.c.daConta && L.some(y => y.c.id === x.c.daConta))); if (!G.length) return '';
     const todos = G.flatMap(x => [x, ...L.filter(y => y.c.tipo === 'invest' && y.c.daConta === x.c.id)]);
@@ -1272,10 +1298,24 @@ function cardSaldos(L) {
   }).filter(x => x.a > 0.004);
   const blocoCartoes = cards.length ? `<div class="card"><div class="row between"><h2 style="margin:0">Cartões e crediários</h2><button class="btn sm" data-tab="dividas">Ver</button></div><p class="tiny" style="margin:4px 0 0">Compras a pagar. Não saem do saldo das contas até você pagar a fatura.</p>
     <div class="list">${cards.map(({ c, a }) => `<div class="it" data-tab="dividas">${logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${donoTag(c.dono)} ${c.pagaPor && conta(c.pagaPor) ? 'paga pela conta ' + esc(conta(c.pagaPor).nome) : TIPOS_CONTA[c.tipo]}</div></div><div class="val">${esc(brl(a))}<div class="tiny">a pagar</div></div></div>`).join('')}</div></div>` : '';
-  return `<div class="card"><h2 style="margin-bottom:0">Saldo das contas</h2>${grupo(['conta'], 'Contas')}${grupo(['invest'], 'Investimentos e cofrinhos')}${grupo(['beneficio'], 'Benefícios')}</div>` + blocoCartoes;
+  return `<div class="card"><h2 style="margin-bottom:0">Contas ${V.mes < mkey(today()) ? 'no fim de ' + MES[+mk.slice(5) - 1].toLowerCase() : 'hoje'}</h2><p class="tiny" style="margin:2px 0 0">Toque numa conta para ver de onde veio o saldo.</p>${grupo(['conta'], 'Contas')}${grupo(['invest'], 'Investimentos e cofrinhos')}${grupo(['beneficio'], 'Benefícios')}</div>` + blocoCartoes;
 }
 
+function detalheConta(c, m) {
+  const L = (rot, v, cor, sinal = '') => `<div class="row between" style="padding:5px 0"><span class="small">${rot}</span><span class="small" style="font-weight:600;${cor ? 'color:var(--' + cor + ')' : ''}">${sinal}${esc(brl(Math.abs(v)))}</span></div>`;
+  return `<div style="margin:0 0 10px 52px;padding:4px 12px;border-left:2px solid var(--line)">
+    ${L('Saldo inicial', m.ini, m.ini < 0 ? 'red' : '', m.ini < 0 ? '−' : '')}
+    ${L('Receitas', m.rec, 'grn', '+')}
+    ${L('Transf. creditadas', m.tc, 'grn', '+')}
+    ${L('Transf. debitadas', m.td, 'red', '−')}
+    ${L('Despesas', m.desp, 'red', '−')}
+    ${Math.abs(m.aj) > 0.004 ? L('Ajustes (estornos, ignorados)', m.aj, m.aj < 0 ? 'red' : 'grn', m.aj < 0 ? '−' : '+') : ''}
+    <div class="row between" style="padding:8px 0 4px;border-top:1px solid var(--line);margin-top:4px"><b>Saldo final</b><b>${esc(brl(m.fim))}</b></div>
+    <div class="row" style="gap:6px;margin:4px 0 6px"><button class="btn sm" data-verconta="${c.id}">${ti('list', 15)} Lançamentos</button><button class="btn sm" data-editconta="${c.id}">${ti('pencil', 15)} Editar saldo</button></div></div>`;
+}
 document.addEventListener('click', e => {
+  const ac = e.target.closest('[data-abreconta]'); if (ac && V.tab === 'resumo' && !e.target.closest('button')) { const k = ac.dataset.abreconta; V.abreConta = V.abreConta === k ? null : k; const y = window.scrollY; render(); window.scrollTo(0, y); return; }
+  const vc = e.target.closest('[data-verconta]'); if (vc && V.tab === 'resumo') { V.fConta = vc.dataset.verconta; V.fCat = ''; V.fSub = ''; V.revisar = false; V.busca = ''; V.tab = 'lanc'; render(); window.scrollTo(0, 0); return; }
   const cs = e.target.closest('[data-catsub]'); if (cs && V.tab === 'resumo') { const [k, sb] = cs.dataset.catsub.split('|'); V.fCat = k || '(sem)'; V.fSub = sb || '(sem)'; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); return; }
   const cv = e.target.closest('[data-catver]'); if (cv && V.tab === 'resumo') { V.fCat = cv.dataset.catver || '(sem)'; V.fSub = ''; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); return; }
   const c = e.target.closest('[data-cat]'); if (c && V.tab === 'resumo' && !c.dataset.cat) { V.fCat = '(sem)'; V.fSub = ''; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); return; }
@@ -1295,7 +1335,8 @@ function previsto(mk) {
   if (!F.length) return null;
   const T = totaisMes(mk); let falta = 0, entra = 0;
   for (const f of F) if (!fixaPaga(f, mk)) { if (f.tipo === 'receita') entra += f.valor; else falta += f.valor; }
-  return { valor: T.saldo + entra - falta, entra, falta };
+  const tc = totalContas(mk);
+  return { valor: (tc != null ? tc : T.saldo) + entra - falta, entra, falta };
 }
 function recorrentes() {
   // mesma descrição, mesmo valor (até 10% de diferença), 2 ou mais meses seguidos, no máximo 2 vezes por mês
