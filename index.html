@@ -1489,7 +1489,7 @@ function opcoesClass(sel) {
   const o = (v, t) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`;
   let h = '<optgroup label="Despesa">' + o('despesa||', 'Sem categoria');
   for (const c of S.cats.despesa) { h += o(`despesa|${c.nome}|`, c.nome); for (const s of c.subs) h += o(`despesa|${c.nome}|${s}`, '      ' + c.nome + ' › ' + s); }
-  h += '</optgroup><optgroup label="Entrada">';
+  h += '</optgroup><optgroup label="Entrada">' + o('receita||', 'Entrada sem categoria');
   for (const c of S.cats.receita) h += o(`receita|${c.nome}|`, c.nome);
   h += '</optgroup><optgroup label="Entrada que é dívida">';
   for (const c of S.cats.entdivida) h += o(`entdivida|${c.nome}|`, c.nome);
@@ -1499,6 +1499,16 @@ function opcoesClass(sel) {
 }
 const classVal = t => `${t.tipo}|${t.tipo === 'despesa' || t.tipo === 'receita' || t.tipo === 'entdivida' ? (t.cat || '') : ''}|${t.tipo === 'despesa' ? (t.sub || '') : ''}`;
 function aplicaClass(t, v) { const [tipo, cat, sub] = v.split('|'); t.tipo = tipo; t.cat = cat || (tipo === 'pagdivida' || tipo === 'transf' ? t.cat || '' : ''); t.sub = sub || ''; if (tipo === 'pagdivida' || tipo === 'transf' || tipo === 'neutro') { t.cat = ''; t.sub = ''; } }
+// exclusão feita por vocês: marca para o app não recriar e desfaz as ligações automáticas
+function excluirTx(x) {
+  const agora = Date.now(), acha = id => S.tx.find(y => y.id === id && !y.del), apaga = y => { y.del = true; y.apagadoMao = true; y.upd = agora; };
+  apaga(x);
+  if (x.espTransf) { const o = acha(x.espTransf); if (o) { o.par = 'fora'; delete o.paraConta; delete o.palpite; if (o.cofre === x.conta) delete o.cofre; o.upd = agora; } }
+  else if (x.par && x.par !== 'fora') { const o = acha(x.par); if (o) { if (o.espTransf) apaga(o); else { o.par = 'fora'; o.upd = agora; } } }
+  if (x.cofre) { const m = acha('esp|' + x.id); if (m) apaga(m); }
+  if (/^esp\|/.test(x.id)) { const o = acha(x.id.slice(4)); if (o) { delete o.cofre; o.upd = agora; } }
+  for (const y of S.tx) if (!y.del && (y.juros === x.id || y.id === 'jr|' + x.id)) apaga(y);
+}
 function classificarPorNome() {
   const G = new Map();
   for (const t of live()) { if (!((t.tipo === 'despesa' || t.tipo === 'receita') && !t.cat) || t.travado && t.cat) continue;
@@ -1554,8 +1564,13 @@ function editarTx(t) {
     ${novo ? '<div class="tiny" style="margin-top:4px">Compra parcelada: informe o valor total e o número de parcelas. O app cria uma parcela por mês.</div>' : ''}</div>
     <div class="grid2" style="margin-top:18px">${novo ? '<button class="btn" data-fechar>Cancelar</button>' : '<button class="btn danger" id="ed-del">Excluir</button>'}<button class="btn pri" id="ed-ok">Salvar</button></div>`);
   let sinal = base.valor > 0 ? 1 : -1;
-  s.querySelectorAll('#ed-sinal button').forEach(b => b.onclick = () => { sinal = +b.dataset.s; s.querySelectorAll('#ed-sinal button').forEach(x => x.classList.toggle('on', x === b)); });
+  const marcaSinal = v => { sinal = v; s.querySelectorAll('#ed-sinal button').forEach(x => x.classList.toggle('on', +x.dataset.s === v)); };
+  // entrou/saiu e a classificação andam juntas: entrada vira "Entrada", saída vira "Despesa"
+  s.querySelectorAll('#ed-sinal button').forEach(b => b.onclick = () => { marcaSinal(+b.dataset.s); const c = s.querySelector('#ed-class');
+    if (sinal > 0 && /^despesa\|/.test(c.value)) c.value = 'receita||'; else if (sinal < 0 && /^(receita|entdivida)\|/.test(c.value)) c.value = 'despesa||';
+    c.dispatchEvent(new Event('change')); });
   const cls = s.querySelector('#ed-class');
+  cls.addEventListener('change', () => { if (/^(receita|entdivida)\|/.test(cls.value) && sinal < 0) marcaSinal(1); else if (/^despesa\|/.test(cls.value) && sinal > 0 && !/estorno|devol/i.test(base.desc || '')) marcaSinal(-1); });
   cls.onchange = () => { const n = s.querySelector('#ed-nome').value.trim(); if (!novo && n) { s.querySelector('#ed-lembrar-w').style.display = 'flex'; s.querySelector('#ed-lnome').textContent = n; } };
   s.querySelector('#ed-conta').onchange = e => { const c = conta(e.target.value); s.querySelector('#ed-venc-w').style.display = c && (c.tipo === 'cartao' || c.tipo === 'loja') ? '' : 'none'; };
   if (s.querySelector('#ed-par')) { cls.addEventListener('change', () => { s.querySelector('#ed-par').style.display = cls.value.startsWith('transf|') ? '' : 'none'; });
@@ -1564,7 +1579,7 @@ function editarTx(t) {
       // espelho antigo do cofrinho (do extrato): sai, porque vai ser escolhido de novo
       const esp = S.tx.find(x => x.id === 'esp|' + base.id && !x.del); if (esp) { esp.del = true; esp.upd = Date.now(); }
       delete base.par; delete base.cofre; base.upd = Date.now(); resolverTransf([base]); }; }
-  if (!novo) s.querySelector('#ed-del').onclick = () => confirma('Excluir este lançamento?', () => { base.del = true; base.upd = Date.now(); save(); s.remove(); render(); toast('Lançamento excluído'); }, 'Excluir');
+  if (!novo) s.querySelector('#ed-del').onclick = () => confirma('Excluir este lançamento?', () => { excluirTx(base); save(); s.remove(); render(); toast('Lançamento excluído'); }, 'Excluir');
   s.querySelector('#ed-ok').onclick = () => {
     const v = P.money(s.querySelector('#ed-val').value);
     const nome = s.querySelector('#ed-nome').value.trim();
@@ -1910,7 +1925,8 @@ function mandaPara(t, destId, palpite) {
   const pal = d.tipo === 'invest' ? (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ') : (t.valor < 0 ? 'Recebido de ' : 'Enviado para ');
   const novo = { id, conta: destId, data: t.data, desc: pal + o.nome + ' · ' + pnome(o.dono), nome: pal + o.nome, valor: -t.valor, tipo: 'transf', cat: '', sub: '', espTransf: t.id, criado: agora, upd: agora };
   if (palpite) novo.palpite = true;
-  if (ex) { Object.assign(ex, novo); if (!palpite) delete ex.palpite; delete ex.del; } else S.tx.push(novo);
+  if (ex && ex.apagadoMao && palpite) { t.par = 'fora'; t.upd = agora; return; }
+  if (ex) { Object.assign(ex, novo); if (!palpite) delete ex.palpite; delete ex.del; delete ex.apagadoMao; } else S.tx.push(novo);
   t.par = id; t.paraConta = destId; t.upd = agora;
 }
 function resolverTransf(lista) {
@@ -1967,7 +1983,7 @@ function conciliaFaturas() {
         const nj = venceu ? { desc: 'Juros por atraso ' + c.nome, nome: 'Juros por atraso', cat: 'Banco', sub: 'Juros' } : { desc: 'Diferença no pagamento ' + c.nome, nome: 'Pagou a mais que as compras', cat: '', sub: '' };
         pg.fatura.juros = venceu;
         if (!ex) { S.tx.push(Object.assign({ id: jid, conta: c.id, data: D, pagoEm: D, valor: -dif, tipo: 'despesa', juros: pg.id, criado: agora, upd: agora }, nj)); mudou = true; }
-        else if (!ex.travado && (ex.del || Math.abs(ex.valor + dif) > 0.004 || ex.desc !== nj.desc)) { Object.assign(ex, nj, { valor: -dif }); delete ex.del; ex.upd = agora; mudou = true; }
+        else if (!ex.travado && !ex.apagadoMao && (ex.del || Math.abs(ex.valor + dif) > 0.004 || ex.desc !== nj.desc)) { Object.assign(ex, nj, { valor: -dif }); delete ex.del; ex.upd = agora; mudou = true; }
       } else if (ex && !ex.del && !ex.travado) { ex.del = true; ex.upd = agora; mudou = true; }
     }
     const vivos = new Set(live().filter(t => t.cartao === c.id).map(t => t.id));
