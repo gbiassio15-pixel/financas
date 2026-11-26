@@ -152,6 +152,11 @@ P.clean = function (desc) {
   const pref = [
     [/^Transfer[êe]ncia enviada pelo Pix - /i, 'Pix enviado'],
     [/^Transfer[êe]ncia recebida pelo Pix - /i, 'Pix recebido'],
+    [/^Transfer[êe]ncia recebida - /i, 'Pix recebido'],
+    [/^Transfer[êe]ncia enviada - /i, 'Pix enviado'],
+    [/^Estorno - Transfer[êe]ncia enviada pelo Pix - /i, 'Estorno'],
+    [/^Estorno - /i, 'Estorno'],
+    [/^Pix no Cr[ée]dito - /i, 'Pix no crédito'],
     [/^Compra no d[ée]bito - /i, 'Débito'],
     [/^Compra no cr[ée]dito - /i, 'Crédito'],
     [/^PAGAMENTO PIX - /i, 'Pix enviado'],
@@ -168,7 +173,11 @@ P.clean = function (desc) {
   s = s.replace(/^\d{2}\.\d{3}\.\d{3}\s+/, '');   // CNPJ de MEI no nome
   s = s.split(/ - (?:•|\*|\d{2}\.\d{3}\.\d{3}\/|\d{3}\.\d{3}\.\d{3}-)/)[0];
   s = s.replace(/ - BR$/i, '').replace(/\s*-\s*$/, '').trim();
-  return { nome: s || String(desc || '').trim(), meio };
+  // parcela no fim do nome: "MIDWAY - 3/4", "LOJA 03/10", "Parcela 2/5"
+  let parc = '';
+  const mp = s.match(/\s*(?:-\s*)?(?:PARCELA\s*)?(\d{1,2})\s*\/\s*(\d{1,2})$/i);
+  if (mp && +mp[1] >= 1 && +mp[1] <= +mp[2] && +mp[2] > 1 && s.length > mp[0].length) { parc = +mp[1] + '/' + +mp[2]; s = s.slice(0, s.length - mp[0].length).replace(/\s*-\s*$/, '').trim(); }
+  return { nome: s || String(desc || '').trim(), meio, parc };
 };
 
 // ===================== OFX =====================
@@ -229,7 +238,10 @@ P.csvGuess = function (rows) {
     if (desc < 0) desc = fi(/DESCRI|HISTOR|TITLE|ESTABELEC/);
     const id = fi(/^(IDENTIFICADOR|ID|REFERENCE_ID|ID DA OPERACAO|CODIGO)$/);
     const hist = fi(/^HISTORICO$/);
-    if (data > -1 && valor > -1 && desc > -1) return { header: h, data, valor, desc, id, hist: hist !== desc ? hist : -1, cols: rows[h] };
+    let saldo = fi(/^(SALDO|SALDO \(R\$\)|SALDO EM R\$|SALDO R\$|SALDO DO DIA|BALANCE|PARTIAL_BALANCE)$/);
+    if (saldo < 0) saldo = fi(/SALDO|BALANCE/);
+    if (saldo === valor) saldo = -1;
+    if (data > -1 && valor > -1 && desc > -1) return { header: h, data, valor, desc, id, saldo, hist: hist !== desc ? hist : -1, cols: rows[h] };
   }
   return null;
 };
@@ -247,11 +259,13 @@ P.parseCSV = function (text, map) {
   if (!g) return { formato: 'CSV', banco, tipo, rows: [], needMap: true, preview: rows.slice(0, 8) };
   const out = [];
   const seen = {};
+  const saldos = []; // [data, saldo, ordem]
   for (let i = g.header + 1; i < rows.length; i++) {
     const r = rows[i];
     const data = P.date(r[g.data]);
     let valor = P.money(r[g.valor]);
     if (!data || isNaN(valor)) continue;
+    if (g.saldo > -1 && r[g.saldo] !== undefined && r[g.saldo] !== '') { const sv = P.money(r[g.saldo]); if (!isNaN(sv)) saldos.push([data, sv, i]); }
     if (inv || (map && map.inverter)) valor = -valor;
     let desc = r[g.desc] || '';
     if (g.hist > -1 && r[g.hist] && !desc.includes(r[g.hist])) desc = r[g.hist] + ' - ' + desc;
@@ -259,7 +273,18 @@ P.parseCSV = function (text, map) {
     if (!fitid) { const k = data + '|' + valor + '|' + P.norm(desc); seen[k] = (seen[k] || 0) + 1; fitid = 'h:' + k + '|' + seen[k]; }
     out.push({ data, valor, desc, fitid });
   }
-  return { formato: 'CSV', banco, tipo, rows: out, map: g, header: rows[g.header] };
+  let saldo = null, saldoData = null;
+  if (saldos.length) {
+    // o saldo mais recente: se o arquivo está do mais novo para o mais velho, é o primeiro do último dia
+    const desc = saldos.length > 1 && saldos[0][0] > saldos[saldos.length - 1][0];
+    const ult = saldos.reduce((m, s) => s[0] > m ? s[0] : m, '');
+    const doDia = saldos.filter(s => s[0] === ult);
+    const s = desc ? doDia[0] : doDia[doDia.length - 1]; saldo = s[1]; saldoData = s[0];
+  } else {
+    // Mercado Pago: linha FINAL_BALANCE no topo
+    for (let i = 0; i < Math.min(rows.length - 1, 6); i++) { const k = rows[i].map(P.norm).indexOf('FINAL_BALANCE'); if (k > -1) { const sv = P.money(rows[i + 1][k]); if (!isNaN(sv)) { saldo = sv; saldoData = out.reduce((m, r) => r.data > m ? r.data : m, '') || null; } break; } }
+  }
+  return { formato: 'CSV', banco, tipo, rows: out, map: g, header: rows[g.header], saldo, saldoData };
 };
 
 // ===================== PDF =====================
@@ -293,7 +318,8 @@ P.parsePDF = function (lines, refYear) {
       const l = sec[i];
       const m = l.text.match(/^\s*(\d{2}-\d{2}-\d{4})\s*(.*?)\s{2,}(\d{6,})\s+(R\$\s*-?[\d.]+,\d{2})/) || l.text.match(/^\s*(\d{2}-\d{2}-\d{4})\s*(.*?)\s*(\d{6,})\s+(R\$\s*-?[\d.]+,\d{2})/);
       if (!m) return null;
-      return { y: l.y, data: P.date(m[1]), desc: m[2].trim(), fitid: 'mp:' + m[3], valor: P.money(m[4]) };
+      const after = l.text.slice(l.text.indexOf(m[4]) + m[4].length).match(/R\$\s*-?[\d.]+,\d{2}/);
+      return { y: l.y, data: P.date(m[1]), desc: m[2].trim(), fitid: 'mp:' + m[3], valor: P.money(m[4]), _saldo: after ? P.money(after[0]) : null };
     }).filter(Boolean);
     sec.forEach((l, i) => {
       if (anchors.includes(i) || !l.text.trim()) return;
@@ -306,7 +332,13 @@ P.parsePDF = function (lines, refYear) {
       r.desc = parts.map(p => p.t).join(' ').replace(/\s+/g, ' ').trim();
       delete r.extra; delete r.y;
     }
-    return { formato: 'PDF', banco: 'Mercado Pago', tipo: 'conta', rows };
+    let saldo = null, saldoData = null;
+    const sf = all.map(P.norm).find(t => /SALDO FINAL/.test(t));
+    const ultData = rows.reduce((m, r) => r.data > m ? r.data : m, '') || null;
+    if (sf && sf.match(MONEY)) { saldo = P.money(sf.match(MONEY).pop()); saldoData = ultData; }
+    else { const comSaldo = rows.filter(r => r._saldo != null && !isNaN(r._saldo)); if (comSaldo.length) { const u = comSaldo.reduce((m, r) => r.data >= m.data ? r : m); saldo = u._saldo; saldoData = u.data; } }
+    rows.forEach(r => delete r._saldo);
+    return { formato: 'PDF', banco: 'Mercado Pago', tipo: 'conta', rows, saldo, saldoData };
   }
 
   // --- Fatura de cartão com datas "05 OUT" (Nubank e outras)
@@ -317,6 +349,7 @@ P.parsePDF = function (lines, refYear) {
   const mRef = vencISO ? +vencISO.slice(5, 7) : 12;
   const rows = [];
   const seen = {};
+  let ultSaldo = null, primSaldo = null;
   for (const t of all) {
     const N = P.norm(t);
     let m, data = null, rest = '';
@@ -331,10 +364,13 @@ P.parsePDF = function (lines, refYear) {
     if (!data) continue;
     const vals = rest.match(MONEY);
     if (!vals) continue;
-    const vtxt = vals[vals.length > 1 && /SALDO/.test(T) ? vals.length - 2 : vals.length - 1];
+    const temSaldo = vals.length > 1 && /SALDO/.test(T);
+    const vtxt = vals[temSaldo ? vals.length - 2 : vals.length - 1];
+    if (temSaldo) ultSaldo = { data, v: P.money(vals[vals.length - 1]), ordem: rows.length };
     let valor = P.money(vtxt);
     let desc = rest.slice(0, rest.indexOf(vals[0])).replace(/•+\s*\d{4}/g, '').replace(/\s{2,}/g, ' ').trim();
     if (!desc || isNaN(valor)) continue;
+    if (ultSaldo && ultSaldo.ordem === rows.length && !primSaldo) primSaldo = ultSaldo;
     const k = data + '|' + valor + '|' + P.norm(desc); seen[k] = (seen[k] || 0) + 1;
     rows.push({ data, valor, desc, fitid: 'p:' + k + '|' + seen[k], venc: vencISO || undefined });
   }
@@ -342,7 +378,18 @@ P.parsePDF = function (lines, refYear) {
   const fatura = /FATURA|CARTAO|LIMITE/.test(T);
   // em fatura, compra vem positiva: vira saída (negativa)
   if (fatura) for (const r of rows) r.valor = -r.valor;
-  return { formato: 'PDF', banco, tipo: fatura ? 'cartao' : 'conta', venc: vencISO, rows, generico: true };
+  // saldo: "Saldo final/atual/disponível" no texto, ou a coluna de saldo da linha mais recente
+  let saldo = null, saldoData = null;
+  if (!fatura) {
+    const sl = all.map(P.norm).filter(t => /SALDO (FINAL|ATUAL|DISPONIVEL|EM CONTA)/.test(t) && t.match(MONEY)).pop();
+    const ultData = rows.reduce((m, r) => r.data > m ? r.data : m, '') || null;
+    if (sl) { saldo = P.money(sl.match(MONEY).pop()); saldoData = ultData; }
+    else if (ultSaldo && !isNaN(ultSaldo.v)) {
+      const s = primSaldo && primSaldo.data > ultSaldo.data ? primSaldo : ultSaldo; // extrato do mais novo para o mais velho
+      saldo = s.v; saldoData = s.data;
+    }
+  }
+  return { formato: 'PDF', banco, tipo: fatura ? 'cartao' : 'conta', venc: vencISO, rows, generico: true, saldo, saldoData };
 };
 
 // ===================== Classificação =====================
@@ -367,6 +414,7 @@ P.SEED_RULES = [
   ['BNC CADASTROS', 'BônusCred', '', 'pagdivida'], ['BONUSPAGO', 'BônusCred', '', 'pagdivida'],
   ['MIDWAY', 'Riachuelo', '', 'pagdivida'], ['SHPP BRASIL', 'Shopee', '', 'pagdivida'],
   ['RESGATE DE EMPRESTIMO', 'Empréstimo', '', 'pagdivida'],
+  ['CREDITO EM CONTA', 'Empréstimo', '', 'entdivida'],
   ['VALOR ADICIONADO NA CONTA POR CARTAO DE CREDITO', '', '', 'neutro'],
   ['LIBERACAO DE DINHEIRO', 'Flash → Mercado Pago', '', 'transf'],
   ['DINHEIRO RESERVADO', 'Investimento', '', 'transf'], ['DINHEIRO RETIRADO', 'Investimento', '', 'transf'], ['COFRINHO', 'Investimento', '', 'transf'],
@@ -381,6 +429,13 @@ P.classify = function (row, conta, rules, pessoas) {
   const nome = P.norm(P.clean(row.desc).nome);
   // reversão de Pix no crédito (Nubank)
   if (/:REVERSAL$/i.test(row.fitid || '')) return { tipo: 'neutro', cat: '', sub: '', auto: 'regra' };
+  const ehCartao = conta && (conta.tipo === 'cartao' || conta.tipo === 'loja');
+  // limite do cartão que virou dinheiro na conta (Pix no crédito para vocês, "Limite convertido em saldo"):
+  // a parcela é dívida, não gasto; o gasto é o que se faz depois com o dinheiro
+  if (ehCartao && row.valor < 0) {
+    const praVoces = /PIX NO CREDITO/.test(N) && (pessoas || []).some(p => (p.aliases || []).some(a => P.norm(a) && nome.includes(P.norm(a))));
+    if (praVoces || /LIMITE CONVERTIDO/.test(N)) return { tipo: 'pagdivida', cat: 'Limite do cartão', sub: '', auto: 'limite' };
+  }
   let best = null;
   for (const r of rules) {
     const k = P.norm(r.k);
@@ -399,7 +454,7 @@ P.classify = function (row, conta, rules, pessoas) {
 };
 
 // Pix devolvido: a devolução e o Pix original não contam como entrada nem gasto
-P.isDevol = desc => /DEVOLU|PIX DEVOLVIDO|ESTORNO DE PIX|ESTORNO PIX|PIX ESTORNADO/.test(P.norm(desc));
+P.isDevol = desc => /DEVOLU|PIX DEVOLVIDO|ESTORNO DE PIX|ESTORNO PIX|PIX ESTORNADO|^ESTORNO\b/.test(P.norm(desc));
 // procura o lançamento original (valor oposto, até 30 dias antes) para uma devolução
 P.achaOriginal = (dev, cands) => cands.find(o => o !== dev && !o._par && Math.abs(o.valor + dev.valor) < 0.005 && o.data <= dev.data && o.data >= P.addDays(dev.data, -30) && !P.isDevol(o.desc));
 
@@ -458,7 +513,7 @@ const CATS_DESP = [
   ['Outros', '📦', '#9196A1', []],
 ];
 const CATS_REC = [['Salário', '💼', '#11935A'], ['13º salário', '🎁', '#0B8A6F'], ['Rendimentos', '📈', '#0B8A6F'], ['Outras entradas', '💰', '#2F7BE5']];
-const CATS_ENTDIV = [['Empréstimo', '🏦', '#B26B00'], ['Adiantamento do FGTS', '📄', '#B26B00']];
+const CATS_ENTDIV = [['Empréstimo', '🏦', '#B26B00'], ['Limite do cartão', '💳', '#B26B00'], ['Adiantamento do FGTS', '📄', '#B26B00']];
 const TIPOS = { despesa: 'Despesa', receita: 'Entrada', entdivida: 'Entrada que é dívida', transf: 'Transferência entre contas', pagdivida: 'Pagamento de fatura/dívida', neutro: 'Ignorar', };
 
 function seed() {
@@ -484,14 +539,40 @@ function seed() {
       entdivida: CATS_ENTDIV.map(([nome, e, cor]) => ({ nome, e, cor, subs: [] })),
     },
     regras: P.SEED_RULES.map(r => Object.assign({ upd: 1 }, r)),
-    mig: 2, orc: {}, orcUpd: {}, tx: [], contratos: [], ultimoBackup: null, mud: 0,
+    mig: 3, orc: {}, orcUpd: {}, tx: [], contratos: [], ultimoBackup: null, mud: 0,
   };
 }
 function load() { try { const t = localStorage.getItem(KEY); return t ? JSON.parse(t) : null; } catch (e) { storageOk = false; return null; } }
 let S = load() || seed();
 // atualiza dados de versões anteriores sem mexer no que a pessoa já criou
 function migra() {
-  if ((S.mig || 1) >= 2) return;
+  if ((S.mig || 1) < 2) migra2();
+  if (S.mig < 3) migra3();
+}
+function migra3() {
+  const temK = new Set(S.regras.map(r => P.norm(r.k)));
+  for (const r of P.SEED_RULES) if (!temK.has(P.norm(r.k))) S.regras.push(Object.assign({ upd: 1 }, r));
+  if (!S.cats.entdivida.some(c => c.nome === 'Limite do cartão')) S.cats.entdivida.splice(1, 0, { nome: 'Limite do cartão', e: '💳', cor: '#B26B00', subs: [] });
+  const agora = Date.now(), ids = new Map(S.tx.map(t => [t.id, t]));
+  for (const t of S.tx) {
+    if (t.del) continue;
+    // separa a parcela do nome
+    const cl = P.clean(t.nome || t.desc);
+    if (cl.parc && !t.parc) { t.parc = cl.parc; t.nome = cl.nome; t.upd = agora; }
+    if (t.travado) continue;
+    const c = conta(t.conta) || {};
+    // limite do cartão que virou dinheiro
+    const k = P.classify({ desc: t.desc, valor: t.valor, fitid: '' }, c, [], S.pessoas);
+    if (k.auto === 'limite' && t.tipo !== 'pagdivida') { Object.assign(t, { tipo: 'pagdivida', cat: 'Limite do cartão', sub: '', upd: agora }); if (!t.venc && c.tipo === 'cartao') t.venc = vencCartao(c, t.data) || undefined; }
+    // Crédito em conta (Nubank) = empréstimo/limite
+    if (/^CREDITO EM CONTA$/.test(P.norm(t.desc)) && t.tipo === 'receita' && !t.cat) Object.assign(t, { tipo: 'entdivida', cat: 'Empréstimo', sub: '', upd: agora });
+    // estornos: o original também não conta
+    const m = t.id.match(/^(.*):reversal$/i);
+    if (m) { const o = ids.get(m[1]); if (o && !o.del && !o.travado && o.tipo !== 'neutro') Object.assign(o, { tipo: 'neutro', cat: '', sub: '', upd: agora }); }
+  }
+  S.mig = 3; save(false);
+}
+function migra2() {
   const temK = new Set(S.regras.map(r => P.norm(r.k)));
   for (const r of P.SEED_RULES) if (!temK.has(P.norm(r.k))) S.regras.push(Object.assign({ upd: 1 }, r));
   for (const r of S.regras) if (!r.user && r.cat === 'Investimento') r.espelho = 'invest';
@@ -500,7 +581,7 @@ function migra() {
   if (!S.cats.despesa.some(c => c.nome === 'Variedades')) { const i = S.cats.despesa.findIndex(c => c.nome === 'Outros'); S.cats.despesa.splice(i < 0 ? S.cats.despesa.length : i, 0, { nome: 'Variedades', e: '🛍️', cor: '#F08C00', subs: [] }); }
   if (!S.cats.receita.some(c => c.nome === 'Rendimentos')) S.cats.receita.splice(Math.max(0, S.cats.receita.length - 1), 0, { nome: 'Rendimentos', e: '📈', cor: '#0B8A6F', subs: [] });
   marcaDevolucoes(S.tx.filter(t => !t.del));
-  S.mig = 2; save(false);
+  S.mig = 2;
 }
 // marca devoluções de Pix já importadas (não mexe no que a pessoa classificou à mão)
 function marcaDevolucoes(lista) {
@@ -561,6 +642,8 @@ function catInfo(tipo, nome) {
   return { e: tipo === 'receita' ? '💰' : '❔', cor: '#9196A1' };
 }
 const live = () => S.tx.filter(t => !t.del);
+// conta para a fatura: compras e também parcelas de dívida lançadas no cartão (Pix no crédito, limite convertido)
+const naFatura = t => t.tipo === 'despesa' || (t.tipo === 'pagdivida' && t.valor < 0 && ['cartao', 'loja'].includes((conta(t.conta) || {}).tipo));
 
 // vencimento de compra em cartão com fechamento/vencimento configurados
 function vencCartao(c, data) {
@@ -583,7 +666,7 @@ function totaisMes(mk) {
     if (t.tipo === 'receita') ent += t.valor;
     else if (t.tipo === 'despesa') { desp -= t.valor; const k = t.cat || ''; porCat[k] = (porCat[k] || 0) - t.valor; }
     else if (t.tipo === 'entdivida') entDiv += t.valor;
-    else if (t.tipo === 'pagdivida') pagDiv -= t.valor;
+    else if (t.tipo === 'pagdivida' && !['cartao', 'loja'].includes((conta(t.conta) || {}).tipo)) pagDiv -= t.valor;
   }
   return { ent, desp, entDiv, pagDiv, saldo: ent - desp, porCat };
 }
@@ -668,7 +751,7 @@ function donut(parts, total) {
 function proximosVenc(dias = 35) {
   const hoje = today(), lim = P.addDays(hoje, dias); const g = {};
   for (const t of live()) {
-    if (!t.venc || t.tipo !== 'despesa' || t.venc < hoje || t.venc > lim || !filtraQuem(t)) continue;
+    if (!t.venc || !naFatura(t) || t.venc < hoje || t.venc > lim || !filtraQuem(t)) continue;
     const c = conta(t.conta); const k = c && c.prazo ? t.conta : t.conta + '|' + t.venc;
     if (!g[k]) g[k] = { conta: t.conta, venc: t.venc, v: 0, n: 0, varios: !!(c && c.prazo) };
     g[k].v -= t.valor; g[k].n++; if (t.venc < g[k].venc) g[k].venc = t.venc;
@@ -793,7 +876,7 @@ function itemTx(t) {
   const titulo = t.nome || t.desc;
   const sub = t.tipo === 'despesa' || t.tipo === 'receita' || t.tipo === 'entdivida' ? (t.cat ? t.cat + (t.sub ? ' › ' + t.sub : '') : '<span class="tag amb">Sem categoria</span>') : '<span class="tag">' + esc(TIPOS[t.tipo]) + '</span>';
   const cor = t.tipo === 'receita' ? 'pos' : t.tipo === 'despesa' ? (t.valor < 0 ? '' : 'pos') : 'muted';
-  return `<div class="it" data-tx="${t.id}"><div class="ic" style="background:${ci.cor}22">${ci.e}</div><div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(c.dono)} ${t.cat ? esc(t.cat + (t.sub ? ' › ' + t.sub : '')) : sub} · ${esc(c.nome || '')}${t.venc ? ' · vence ' + dshort(t.venc) : ''}</div></div><div class="val ${cor}">${esc(brl(t.valor))}</div></div>`;
+  return `<div class="it" data-tx="${t.id}"><div class="ic" style="background:${ci.cor}22">${ci.e}</div><div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(c.dono)} ${t.cat ? esc(t.cat + (t.sub ? ' › ' + t.sub : '')) : sub} · ${esc(c.nome || '')}${t.parc ? ' · parcela ' + t.parc : ''}${t.venc ? ' · vence ' + dshort(t.venc) : ''}</div></div><div class="val ${cor}">${esc(brl(t.valor))}</div></div>`;
 }
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-fx]');
@@ -962,8 +1045,17 @@ function montaPrevia(res, contaId, nomeArq) {
     const id = contaId + '|' + r.fitid;
     const cl = P.classify(r, c, S.regras, S.pessoas);
     const cln = P.clean(r.desc);
-    return { r, id, dup: ids.has(id), sel: !ids.has(id), tipo: cl.tipo, cat: cl.cat, sub: cl.sub, auto: cl.auto, espelho: cl.espelho, nome: cln.nome, meio: cln.meio };
+    return { r, id, dup: ids.has(id), sel: !ids.has(id), tipo: cl.tipo, cat: cl.cat, sub: cl.sub, auto: cl.auto, espelho: cl.espelho, nome: cln.nome, meio: cln.meio, parc: cln.parc };
   });
+  // estorno/Pix no crédito do Nubank: o lançamento ":reversal" e o original (mesmo código) não contam
+  const porFit = new Map(linhas.map(l => [String(l.r.fitid), l]));
+  for (const l of linhas) {
+    const m = String(l.r.fitid || '').match(/^(.*):reversal$/i); if (!m || l.dup) continue;
+    const o = porFit.get(m[1]);
+    if (o && !o.dup) { if (o.tipo !== 'neutro') Object.assign(o, { tipo: 'neutro', cat: '', sub: '', auto: 'estorno', espelho: undefined }); }
+    else if (!o) { const ex = S.tx.find(t => t.id === contaId + '|' + m[1] && !t.del); if (ex && ex.tipo !== 'neutro' && !ex.travado) l.parTx = ex.id; }
+  }
+  for (const l of linhas) if (/^(CREDITO|DEBITO) EM CONTA$/.test(P.norm(l.nome))) l.confira = true;
   // Pix devolvido: a devolução e o Pix original viram "Ignorar"
   const jaTem = live().filter(t => t.conta === contaId && !t.travado).map(t => ({ t, valor: t.valor, data: t.data, desc: t.desc }));
   const cands = linhas.filter(l => !l.dup).map(l => ({ l, valor: l.r.valor, data: l.r.data, desc: l.r.desc })).concat(jaTem);
@@ -1008,7 +1100,7 @@ function rImportar() {
     const ci = catInfo(l.tipo, l.cat);
     return `<div class="prow ${l.dup ? 'dup' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><input type="checkbox" class="chk" data-isel="${i}" ${l.sel ? 'checked' : ''} ${l.dup ? 'disabled' : ''} style="margin-top:2px">
       <div style="flex:1;min-width:0"><div class="row between" style="gap:8px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ci.e} ${esc(l.nome)}</b><b class="${l.r.valor > 0 ? 'pos' : ''}" style="white-space:nowrap">${esc(brl(l.r.valor))}</b></div>
-      <div class="tiny">${dshort(l.r.data)}${l.meio ? ' · ' + esc(l.meio) : ''}${l.r.venc ? ' · vence ' + dshort(l.r.venc) : ''}${l.dup ? ' · já importado' : ''}${l.auto === 'casal' ? ' · entre vocês' : ''}${l.auto === 'devol' ? ' · Pix devolvido' : ''}${l.espelho === 'invest' ? ' · vai para o investimento' : ''}</div>
+      <div class="tiny">${dshort(l.r.data)}${l.meio ? ' · ' + esc(l.meio) : ''}${l.r.venc ? ' · vence ' + dshort(l.r.venc) : ''}${l.dup ? ' · já importado' : ''}${l.auto === 'casal' ? ' · entre vocês' : ''}${l.auto === 'devol' ? ' · Pix devolvido' : ''}${l.auto === 'estorno' ? ' · estornado' : ''}${l.auto === 'limite' ? ' · limite do cartão' : ''}${l.parc ? ' · parcela ' + l.parc : ''}${l.confira ? ' · <b style="color:var(--amb)">confira o que foi</b>' : ''}${l.espelho === 'invest' ? ' · vai para o investimento' : ''}</div>
       ${l.dup ? '' : `<select class="f" data-icls="${i}">${opcoesClass(classVal(l))}</select>`}</div></div></div>`; }).join('')}</div>
   <div style="position:sticky;bottom:calc(env(safe-area-inset-bottom) + 66px);display:grid;grid-template-columns:1fr 2fr;gap:10px;padding:10px 0;margin:0 -16px;padding-left:16px;padding-right:16px;background:linear-gradient(to top,var(--bg) 75%,transparent)">
     <button class="btn" id="imp-cancel" style="background:var(--card);box-shadow:var(--sh)">Cancelar</button><button class="btn pri" id="imp-ok">Importar ${sel.length}</button></div>`;
@@ -1036,7 +1128,7 @@ function confirmaImport() {
   let n = 0, criouInv = ''; const agora = Date.now();
   for (const l of I.linhas) {
     if (!l.sel || l.dup) continue;
-    const t = { id: l.id, conta: c.id, data: l.r.data, desc: l.r.desc, nome: l.nome, meio: l.meio, valor: Math.round(l.r.valor * 100) / 100, tipo: l.tipo, cat: l.cat, sub: l.sub, criado: agora, upd: agora };
+    const t = { id: l.id, conta: c.id, data: l.r.data, desc: l.r.desc, nome: l.nome, meio: l.meio, parc: l.parc || undefined, valor: Math.round(l.r.valor * 100) / 100, tipo: l.tipo, cat: l.cat, sub: l.sub, criado: agora, upd: agora };
     if (c.tipo === 'cartao' || c.tipo === 'loja') t.venc = l.r.venc || vencCartao(c, t.data) || undefined;
     if (l.auto === 'manual') t.travado = true;
     S.tx.push(t); n++;
@@ -1053,7 +1145,7 @@ function confirmaImport() {
     }
   }
   if (I.res.acctKey && !(c.chaves || []).includes(I.res.acctKey)) { S.contas.forEach(x => x.chaves = (x.chaves || []).filter(k => k !== I.res.acctKey)); (c.chaves = c.chaves || []).push(I.res.acctKey); }
-  // saldo informado no extrato OFX
+  // saldo informado no extrato (OFX, CSV ou PDF)
   if (I.res.saldo != null && !isNaN(I.res.saldo) && (c.tipo === 'conta' || c.tipo === 'invest')) {
     const d = I.res.saldoData || I.linhas.reduce((m, l) => l.r.data > m ? l.r.data : m, '');
     if (d && (!c.saldoRef || d >= c.saldoRef.data)) { c.saldoRef = { valor: I.res.saldo, data: d }; c.upd = agora; }
@@ -1103,7 +1195,7 @@ function rDividas() {
   const contas = S.contas.filter(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem));
   let totalAberto = 0;
   const blocos = contas.map(c => {
-    const itens = live().filter(t => t.conta === c.id && t.tipo === 'despesa');
+    const itens = live().filter(t => t.conta === c.id && naFatura(t));
     const semVenc = itens.filter(t => !t.venc).length;
     const futuros = itens.filter(t => t.venc && t.venc >= hoje);
     const porMes = {}; for (const t of futuros) { const k = mkey(t.venc); porMes[k] = (porMes[k] || 0) - t.valor; }
@@ -1216,7 +1308,7 @@ function editarConta(c) {
   <div id="cc-cart"><div class="grid2"><div><label class="l">Dia do fechamento</label><input class="f" id="cc-fech" inputmode="numeric" value="${b.fech || ''}" placeholder="ex.: 28"></div><div><label class="l">Dia do vencimento</label><input class="f" id="cc-venc" inputmode="numeric" value="${b.venc || ''}" placeholder="ex.: 5"></div></div>
     <label class="l">Ou: cada compra vence em (dias)</label><input class="f" id="cc-prazo" inputmode="numeric" value="${b.prazo || ''}" placeholder="BônusCred: 30"></div>
   <div id="cc-ben"><label class="l">Saldo de hoje (R$)</label><input class="f" id="cc-saldo" inputmode="decimal" value="${saldoAtual != null ? String(saldoAtual.toFixed(2)).replace('.', ',') : ''}" placeholder="Confira no app do banco">
-    <div class="tiny" style="margin-top:4px">Os lançamentos importados depois de hoje vão somando a partir deste valor. O extrato OFX atualiza o saldo sozinho.</div></div>
+    <div class="tiny" style="margin-top:4px">Os lançamentos importados depois de hoje vão somando a partir deste valor. Importar extrato (OFX, CSV ou PDF) atualiza o saldo sozinho.</div></div>
   <div class="grid2" style="margin-top:18px">${novo ? '<button class="btn" data-fechar>Cancelar</button>' : '<button class="btn danger" id="cc-del">Excluir</button>'}<button class="btn pri" id="cc-ok">Salvar</button></div>`);
   const vis = () => { const t = s.querySelector('#cc-tipo').value; s.querySelector('#cc-cart').style.display = t === 'cartao' || t === 'loja' ? '' : 'none'; s.querySelector('#cc-ben').style.display = t === 'beneficio' || t === 'conta' || t === 'invest' ? '' : 'none'; };
   s.querySelector('#cc-tipo').onchange = vis; vis();
@@ -1233,7 +1325,7 @@ function editarConta(c) {
     if (!sv && b.saldoRef) delete b.saldoRef;
     if (!b.banco) b.banco = nome;
     // recalcula vencimentos sem data
-    for (const t of live()) if (t.conta === b.id && !t.venc && t.tipo === 'despesa') { const v = b.prazo ? P.addDays(t.data, b.prazo) : vencCartao(b, t.data); if (v) { t.venc = v; t.upd = Date.now(); } }
+    for (const t of live()) if (t.conta === b.id && !t.venc && naFatura(t)) { const v = b.prazo ? P.addDays(t.data, b.prazo) : vencCartao(b, t.data); if (v) { t.venc = v; t.upd = Date.now(); } }
     if (novo) S.contas.push(b); save(); s.remove(); render(); toast('Conta salva');
   };
 }
