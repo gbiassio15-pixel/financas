@@ -1140,7 +1140,10 @@ function proximosVenc(dias = 35) {
   for (const c of S.contratos) {
     if (c.parcelas && c.parcelas.length) {
       if (V.quem !== 'all' && c.dono !== V.quem) continue;
-      const p = c.parcelas.find(x => !x.pago);
+      if (c.entrada && !c.entrada.pago && c.entrada.data && c.entrada.data <= lim) out.push({ contrato: c, venc: c.entrada.data, v: c.entrada.valor, n: 1, parc: 'entrada' });
+      const atr = parcAtrasadas(c);
+      if (atr.length) out.push({ contrato: c, venc: atr[0].venc, v: atr.reduce((a, x) => a + x.valor, 0), n: atr.length, atrasada: true });
+      const p = c.parcelas.find(x => !x.pago && x.venc >= hoje);
       if (p && p.venc <= lim) out.push({ contrato: c, venc: p.venc, v: p.valor, n: 1, parc: p.n });
       continue;
     }
@@ -1219,7 +1222,7 @@ function rResumo() {
     ${venc.length ? `<div class="list" style="margin-top:6px">${venc.slice(0, 8).map(v => { const c = v.contrato || v.fixa ? null : conta(v.conta); const atraso = v.venc <= P.addDays(today(), 3);
       const icone = v.fixa ? (v.fixa.ic ? icBox(v.fixa.ic, v.fixa.cor || catInfo(v.fixa.tipo, v.fixa.cat).cor) : catIc(v.fixa.tipo, v.fixa.cat, 40, v.fixa.sub)) : v.contrato ? (v.contrato.banco ? logoBanco({ banco: v.contrato.banco }) : '<div class="ic" style="background:var(--ambbg);color:var(--amb)">' + ti('home', 20) + '</div>') : logoBanco(c);
       const titulo = v.fixa ? v.fixa.nome : v.contrato ? v.contrato.nome : (c ? c.nome : '');
-      const sub = v.atrasada ? `<b style="color:var(--red)">${v.n} atrasada(s) · cobra juros</b>` : v.fixa ? 'Conta fixa' : v.contrato ? 'Parcela ' + v.parc + '/' + v.contrato.total : v.n + ' compra(s)' + (v.varios ? ' nos próximos 35 dias' : '');
+      const sub = v.atrasada ? `<b style="color:var(--red)">${v.n} atrasada(s) · cobra juros</b>` : v.fixa ? 'Conta fixa' : v.contrato ? (v.parc === 'entrada' ? 'Entrada' : 'Parcela ' + v.parc + '/' + v.contrato.total) : v.n + ' compra(s)' + (v.varios ? ' nos próximos 35 dias' : '');
       const dono = v.fixa ? v.fixa.dono : v.contrato ? v.contrato.dono : c && c.dono;
       return `<div class="it" ${v.fixa ? 'data-tab="fixas"' : 'data-tab="dividas"'}>${icone}<div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(dono)} ${sub}</div></div><div class="val"><div>${esc(brl(v.v))}</div><div class="tiny" style="${atraso || v.atrasada ? 'color:var(--red);font-weight:700' : ''}">${v.atrasada ? 'venceu ' : v.varios ? 'a partir de ' : ''}${dlabel(v.venc)}</div></div></div>`; }).join('')}</div>`
     : `<div class="small muted" style="margin-top:6px">Nada vencendo nos próximos 35 dias.</div>`}
@@ -1965,24 +1968,53 @@ function ajustaContrato(c) {
   c.parcela = prox.valor; c.dia = +prox.venc.slice(8, 10);
   return c;
 }
-const restoContrato = c => c.parcelas && c.parcelas.length ? c.parcelas.filter(x => !x.pago).reduce((a, x) => a + x.valor, 0) : c.parcela * Math.max(0, c.total - c.pagas);
+const parcAtrasadas = c => (c.parcelas || []).filter(x => !x.pago && x.venc < today());
+const restoContrato = c => (c.entrada && !c.entrada.pago ? c.entrada.valor || 0 : 0) + (c.parcelas && c.parcelas.length ? c.parcelas.filter(x => !x.pago).reduce((a, x) => a + x.valor, 0) : c.parcela * Math.max(0, c.total - c.pagas));
 // liga pagamentos do extrato às parcelas (valor parecido, perto do vencimento, na conta do mesmo banco)
 function baixaContratos() {
   let n = 0; const agora = Date.now();
   for (const c of S.contratos) {
-    if (!c.parcelas || !c.banco) continue;
-    const contasC = S.contas.filter(x => x.tipo === 'conta' && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco)).map(x => x.id);
+    const chaves = (c.chaves || []).map(P.norm).filter(k => k.length >= 3);
+    if (!c.parcelas || (!c.banco && !chaves.length)) continue;
     const usados = new Set(live().filter(t => t.contrato).map(t => t.id));
-    const cands = live().filter(t => contasC.includes(t.conta) && t.valor < 0 && !usados.has(t.id) && /EMPREST|CREDITO|PARCELA|MERCADO CREDITO|EMPRESTIMO/.test(P.norm(t.desc + ' ' + (t.nome || ''))))
-      .sort((a, b) => a.data.localeCompare(b.data));
+    let cands;
+    if (chaves.length) { const contasC = S.contas.filter(x => x.tipo === 'conta' && (c.dono === 'casa' || x.dono === c.dono)).map(x => x.id);
+      cands = live().filter(t => contasC.includes(t.conta) && t.valor < 0 && !usados.has(t.id) && chaves.some(k => P.norm(t.desc + ' ' + (t.nome || '')).includes(k))); }
+    else { const contasC = S.contas.filter(x => x.tipo === 'conta' && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco)).map(x => x.id);
+      cands = live().filter(t => contasC.includes(t.conta) && t.valor < 0 && !usados.has(t.id) && /EMPREST|CREDITO|PARCELA|MERCADO CREDITO|EMPRESTIMO/.test(P.norm(t.desc + ' ' + (t.nome || '')))); }
+    cands.sort((a, b) => a.data.localeCompare(b.data));
     const antes = n;
-    for (const p of c.parcelas) {
-      if (p.pago) continue;
-      const t = cands.find(t => !t.contrato && Math.abs(-t.valor - p.valor) <= p.valor * 0.12 && t.data >= P.addDays(p.venc, -40) && t.data <= P.addDays(p.venc, 10));
-      if (!t) continue;
-      p.pago = true; p.pagoEm = t.data; t.contrato = c.id; t.upd = agora; n++;
+    const tol = c.variavel ? 0.3 : 0.12, pend = () => c.parcelas.filter(x => !x.pago);
+    for (const t of cands) {
+      if (t.contrato || !pend().length) continue;
+      const A = -t.valor;
+      // 1) parcela do mês, paga em dia (ou até 10 dias depois) com valor parecido
+      const emDia = pend().filter(x => t.data >= P.addDays(x.venc, -40) && t.data <= P.addDays(x.venc, 10) && Math.abs(A - x.valor) <= x.valor * tol)
+        .sort((a, b) => Math.abs(P.diffDias(t.data, a.venc)) - Math.abs(P.diffDias(t.data, b.venc)))[0];
+      let quita = [], atrasou = false;
+      if (emDia) { quita = [emDia]; atrasou = t.data > P.addDays(emDia.venc, 3) && A > emDia.valor + 0.009 && !c.variavel; }
+      else {
+        // 2) atrasadas: quita da mais antiga para a mais nova; o que sobrar é juros
+        const venc = pend().filter(x => x.venc < P.addDays(t.data, -3));
+        const devidas = venc.reduce((a, x) => a + x.valor, 0);
+        if (!venc.length || A < venc[0].valor * 0.95 || A > devidas * 1.6 + 0.01) continue;
+        let soma = 0; for (const x of venc) { if (quita.length && soma + x.valor > A + 0.01) break; quita.push(x); soma += x.valor; }
+        atrasou = true;
+      }
+      const soma = quita.reduce((a, x) => a + x.valor, 0);
+      for (const x of quita) { x.pago = true; x.pagoEm = t.data; }
+      t.contrato = c.id; t.upd = agora; n += quita.length;
+      const resto = Math.round((A - soma) * 100) / 100;
+      if (resto > 0.009 && atrasou) {
+        // separa o juros do pagamento: a parcela fica como pagamento de dívida e o juros entra como despesa
+        if (t.valorOrig == null) t.valorOrig = t.valor; t.valor = -Math.round(soma * 100) / 100;
+        const jid = 'jr|' + t.id;
+        if (!S.tx.some(x => x.id === jid)) S.tx.push({ id: jid, conta: t.conta, data: t.data, desc: 'Juros por atraso - ' + c.nome, nome: 'Juros por atraso - ' + c.nome, valor: -resto, tipo: 'despesa', cat: 'Banco', sub: 'Juros', jurosDe: c.id, criado: agora, upd: agora });
+      } else if (Math.abs(resto) > 0.009 && c.variavel && quita.length === 1) { const p = quita[0], v = Math.round(A * 100) / 100; p.valor = v; for (const x of c.parcelas) if (!x.pago && x.venc > p.venc) x.valor = v; }
       if (!t.travado && t.tipo !== 'pagdivida') Object.assign(t, { tipo: 'pagdivida', cat: '', sub: '' });
     }
+    if (c.entrada && !c.entrada.pago && chaves.length && c.entrada.data) { const t = cands.find(t => !t.contrato && Math.abs(-t.valor - c.entrada.valor) <= c.entrada.valor * 0.05 && Math.abs(P.diffDias(t.data, c.entrada.data)) <= 10);
+      if (t) { c.entrada.pago = true; c.entrada.pagoEm = t.data; t.contrato = c.id; t.upd = agora; n++; if (!t.travado && t.tipo !== 'pagdivida') Object.assign(t, { tipo: 'pagdivida', cat: '', sub: '' }); } }
     ajustaContrato(c); if (n > antes) c.upd = agora;
   }
   return n;
@@ -2263,7 +2295,10 @@ function rDividas() {
     h += `<div class="card"><div class="row between" data-contr="${c.id}" style="cursor:pointer"><div class="row">${icone}<div><div style="font-weight:700">${esc(c.nome)}</div><div class="small muted">${donoTag(c.dono)} ${esc(TIPOS_CONTRATO[c.tipo] || '')}</div></div></div><div style="text-align:right"><div style="font-weight:700">${esc(brl(c.parcela))}</div><div class="tiny">${c.tipo === 'fgts' ? 'por ano' : prox ? 'vence ' + dshort(prox.venc) : 'dia ' + c.dia}</div></div></div>
     ${juros > 0 ? `<div class="small" style="margin-top:10px">Pegou <b>${esc(brl(c.liberado))}</b> e vai pagar <b>${esc(brl(c.totalPagar))}</b>: <b style="color:var(--red)">${esc(brl(juros))} de juros</b>${c.juros ? ` (${String(c.juros).replace('.', ',')}% ao mês)` : ''}.</div>` : ''}
     <div class="bar" style="margin:12px 0 6px"><i style="width:${pct}%;background:var(--amb)"></i></div>
-    <div class="row between small"><span class="muted">${c.pagas} de ${c.total} pagas · faltam ${esc(brl(resta))}</span>${c.pagas < c.total ? `<button class="btn sm" data-pagou="${c.id}">+1 paga</button>` : '<span class="tag acc">Quitado</span>'}</div>
+    ${(() => { const a = parcAtrasadas(c), jr = -live().filter(t => t.jurosDe === c.id).reduce((s, t) => s + t.valor, 0);
+      return (a.length ? `<div class="banner red" style="margin:0 0 8px">${ti('alert-triangle', 18)} <span>${a.length} parcela(s) atrasada(s): <b>${esc(brl(a.reduce((s, x) => s + x.valor, 0)))}</b>. Atrasar cobra juros.</span></div>` : '') + (jr > 0.009 ? `<div class="small" style="margin-bottom:6px">Juros por atraso já pagos: <b style="color:var(--red)">${esc(brl(jr))}</b></div>` : ''); })()}
+    ${c.entrada ? `<div class="small" style="margin-bottom:6px">Entrada de <b>${esc(brl(c.entrada.valor))}</b> ${c.entrada.pago ? '<span style="color:var(--grn)">paga</span>' : `<span style="color:var(--amb)">a pagar${c.entrada.data ? ' em ' + dshort(c.entrada.data) : ''}</span>`}</div>` : ''}
+    <div class="row between small"><span class="muted">${c.pagas} de ${c.total} pagas · faltam ${esc(brl(resta))}${c.variavel ? ' (estimado)' : ''}</span>${c.pagas < c.total ? `<button class="btn sm" data-pagou="${c.id}">+1 paga</button>` : '<span class="tag acc">Quitado</span>'}</div>
     ${c.tipo === 'fgts' ? '<div class="tiny" style="margin-top:6px">Descontado direto do FGTS: não sai da conta e não entra nas despesas.</div>' : ''}</div>`;
   }
   if (restoFgts) h += `<p class="tiny">FGTS comprometido com o saque-aniversário: ${esc(brl(restoFgts))}.</p>`;
@@ -2278,26 +2313,82 @@ document.addEventListener('click', e => {
   const ec = e.target.closest('[data-editconta]'); if (ec) editarConta(conta(ec.dataset.editconta));
 });
 function editarContrato(c) {
-  const novo = !c; const b = c || { id: uid(), nome: '', dono: S.eu, tipo: 'casa', parcela: 0, total: 0, pagas: 0, dia: 10 };
-  const s = sheet(`<div class="row between"><h2 style="margin:0">${novo ? 'Nova dívida' : 'Editar dívida'}</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ic('x')}</button></div>
+  const novo = !c, doPdf = c && c.parcelas && c.parcelas.length && !c.manual;
+  const b = c || { id: 'ct:' + uid(), nome: '', dono: 'casa', tipo: 'casa', manual: true, chaves: [] };
+  // dívida antiga cadastrada só com "valor, total, pagas, dia": monta as parcelas para editar
+  const P0 = b.parcelas && b.parcelas.length ? b.parcelas : null;
+  const hoje = today(), base = P0 ? null : (() => { const x = P.iso(+hoje.slice(0, 4), +hoje.slice(5, 7), Math.min(28, b.dia || 10)); return addMeses(x >= hoje ? x : addMeses(x, 1), -(b.pagas || 0)); })();
+  const normais = P0 ? P0.filter(x => !x.final) : [], finais = P0 ? P0.filter(x => x.final) : [];
+  const ini = { qtd: P0 ? (b.valorTotal ? normais.length : P0.length) : (b.total || ''), valor: P0 ? (normais.find(x => !x.reaj) || normais[0] || P0[0]).valor : (b.parcela || ''), venc: P0 ? P0[0].venc : (b.total ? base : ''), pagas: P0 ? P0.filter(x => x.pago).length : (b.pagas || 0) };
+  const n2 = v => v === '' || v == null ? '' : String(v).replace('.', ',');
+  const s = sheet(`<div class="row between"><h2 style="margin:0">${novo ? 'Nova dívida' : 'Editar dívida'}</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ti('x')}</button></div>
   <label class="l">Tipo</label><select class="f" id="ct-tipo">${Object.entries(TIPOS_CONTRATO).map(([k, v]) => `<option value="${k}" ${k === b.tipo ? 'selected' : ''}>${v}</option>`).join('')}</select>
-  <label class="l">Nome</label><input class="f" id="ct-nome" value="${esc(b.nome)}" placeholder="Financiamento Caixa">
-  <label class="l">De quem</label><select class="f" id="ct-dono">${[...S.pessoas.map(p => [p.id, p.nome]), ['casa', 'Casa (os dois)']].map(([k, n]) => `<option value="${k}" ${k === b.dono ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
-  <div class="grid2"><div><label class="l">Valor da parcela</label><input class="f" id="ct-parc" inputmode="decimal" value="${b.parcela ? String(b.parcela).replace('.', ',') : ''}"></div><div><label class="l">Dia do vencimento</label><input class="f" id="ct-dia" inputmode="numeric" value="${b.dia}"></div></div>
-  <div class="grid2"><div><label class="l">Total de parcelas</label><input class="f" id="ct-tot" inputmode="numeric" value="${b.total || ''}"></div><div><label class="l">Já pagas</label><input class="f" id="ct-pag" inputmode="numeric" value="${b.pagas || 0}"></div></div>
+  <label class="l">Nome</label><input class="f" id="ct-nome" value="${esc(b.nome)}" placeholder="Parcela do vendedor da casa">
+  <label class="l">De quem</label><select class="f" id="ct-dono">${[...S.pessoas.map(p => [p.id, pnome(p.id)]), ['casa', 'Casa (os dois)']].map(([k, n]) => `<option value="${k}" ${k === b.dono ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+  <div id="ct-man" ${doPdf ? 'style="display:none"' : ''}>
+    <label class="l">Valor total (opcional)</label><input class="f" id="ct-total" inputmode="decimal" value="${n2(b.valorTotal)}" placeholder="ex.: 80.000,00">
+    <div class="tiny" style="margin-top:4px">Com o total, o app calcula sozinho a última parcela para fechar a conta.</div>
+    <div class="tiny" style="font-weight:700;margin:16px 0 0;text-transform:uppercase;letter-spacing:.05em">Entrada</div>
+    <div class="grid2"><div><label class="l">Valor (R$)</label><input class="f" id="ct-ev" inputmode="decimal" value="${n2(b.entrada && b.entrada.valor)}" placeholder="sem entrada"></div><div><label class="l">Data</label><input class="f" id="ct-ed" type="date" value="${(b.entrada && b.entrada.data) || ''}"></div></div>
+    <label class="row small" style="gap:8px;margin-top:8px"><input type="checkbox" class="chk" id="ct-ep" ${!b.entrada || b.entrada.pago ? 'checked' : ''}> Entrada já paga</label>
+    <div class="tiny" style="font-weight:700;margin:16px 0 0;text-transform:uppercase;letter-spacing:.05em">Parcelas</div>
+    <div class="grid2"><div><label class="l">Quantidade</label><input class="f" id="ct-qtd" inputmode="numeric" value="${ini.qtd}"></div><div><label class="l">Valor de cada (R$)</label><input class="f" id="ct-pv" inputmode="decimal" value="${n2(ini.valor)}"></div></div>
+    <label class="l">1º vencimento</label><input class="f" id="ct-pd" type="date" value="${ini.venc || ''}">
+    <label class="row small" style="gap:8px;margin-top:10px"><input type="checkbox" class="chk" id="ct-var" ${b.variavel ? 'checked' : ''}> O valor da parcela pode mudar (reajuste)</label>
+    <div class="tiny" style="margin-top:2px">Quando o pagamento aparecer no extrato, o app usa o valor pago de verdade e passa ele para as próximas parcelas.</div>
+    <label class="l">Parcelas já pagas</label><input class="f" id="ct-pag" inputmode="numeric" value="${ini.pagas}">
+    <div class="tiny" id="ct-resumo" style="margin-top:8px"></div>
+  </div>
+  <label class="l">Como o pagamento aparece no extrato (opcional)</label><input class="f" id="ct-ch" value="${esc((b.chaves || []).join(', '))}" placeholder="ex.: COHAPAR, nome de quem recebe o Pix">
+  <div class="tiny" style="margin-top:4px">Com isso, o app marca as parcelas como pagas sozinho quando encontra o pagamento no extrato.</div>
+  ${!novo && P0 ? `<details style="margin-top:14px"><summary class="small" style="cursor:pointer;font-weight:600">Ver parcelas (toque para marcar como paga ou não)</summary><div class="card" style="padding:4px 14px;margin:8px 0 0;max-height:40vh;overflow:auto">${b.entrada ? `<div class="row between" style="padding:9px 0;border-bottom:1px solid var(--line)"><span>Entrada${b.entrada.data ? ' · ' + dshort(b.entrada.data) + '/' + b.entrada.data.slice(2, 4) : ''}</span><span>${esc(brl(b.entrada.valor))} <span class="tag ${b.entrada.pago ? 'acc' : 'amb'}" style="margin-left:6px">${b.entrada.pago ? 'paga' : 'a pagar'}</span></span></div>` : ''}${b.parcelas.map((x, i) => `<div class="row between" data-ptog="${i}" style="padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>${x.n}ª · ${dshort(x.venc)}/${x.venc.slice(2, 4)}</span><span>${esc(brl(x.valor))} <span class="tag ${x.pago ? 'acc' : x.venc < today() ? 'red' : 'amb'}" style="margin-left:6px">${x.pago ? 'paga' + (x.pagoEm ? ' ' + dshort(x.pagoEm) : '') : x.venc < today() ? 'atrasada' : 'a pagar'}</span></span></div>`).join('')}</div></details>` : ''}
+  ${!novo && P0 ? `<button class="btn full" id="ct-reaj" style="margin-top:14px">${ti('percentage', 16)} Mudar o valor da parcela a partir de uma data</button>` : ''}
   <div class="grid2" style="margin-top:18px">${novo ? '<button class="btn" data-fechar>Cancelar</button>' : '<button class="btn danger" id="ct-del">Excluir</button>'}<button class="btn pri" id="ct-ok">Salvar</button></div>`);
-  if (b.parcelas && b.parcelas.length) {
-    s.querySelector('.grid2:last-child').insertAdjacentHTML('beforebegin', `<label class="l">Parcelas (toque para marcar como paga ou não)</label><div class="card" style="padding:4px 14px;margin:0">${b.parcelas.map((x, i) => `<div class="row between" data-ptog="${i}" style="padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer"><span>${x.n}ª · ${dshort(x.venc)}/${x.venc.slice(2, 4)}</span><span>${esc(brl(x.valor))} <span class="tag ${x.pago ? 'acc' : 'amb'}" style="margin-left:6px">${x.pago ? 'paga' + (x.pagoEm ? ' ' + dshort(x.pagoEm) : '') : 'a pagar'}</span></span></div>`).join('')}</div>`);
-    ['#ct-parc', '#ct-tot', '#ct-pag', '#ct-dia'].forEach(q => { const el = s.querySelector(q); el.disabled = true; el.style.opacity = .6; });
-    s.querySelectorAll('[data-ptog]').forEach(r => r.onclick = () => { const x = b.parcelas[+r.dataset.ptog]; x.pago = !x.pago; x.pagoEm = x.pago ? (x.pagoEm || today()) : undefined; x.manual = true; ajustaContrato(b); b.upd = Date.now(); save(); s.remove(); render(); editarContrato(b); });
-  }
-  if (!novo) s.querySelector('#ct-del').onclick = () => confirma('Excluir esta dívida?', () => { S.contratos = S.contratos.filter(x => x !== c); marcaApagado('contratos', c.id); save(); s.remove(); render(); }, 'Excluir');
-  s.querySelector('#ct-ok').onclick = () => {
-    const v = { tipo: s.querySelector('#ct-tipo').value, nome: s.querySelector('#ct-nome').value.trim(), dono: s.querySelector('#ct-dono').value, parcela: P.money(s.querySelector('#ct-parc').value) || 0, dia: Math.min(31, Math.max(1, parseInt(s.querySelector('#ct-dia').value) || 1)), total: parseInt(s.querySelector('#ct-tot').value) || 0, pagas: parseInt(s.querySelector('#ct-pag').value) || 0 };
-    if (!v.nome) v.nome = TIPOS_CONTRATO[v.tipo];
-    if (b.parcelas && b.parcelas.length) { Object.assign(b, { tipo: v.tipo, nome: v.nome, dono: v.dono, upd: Date.now() }); save(); s.remove(); render(); return; }
-    if (!v.parcela || !v.total) { toast('Preencha o valor da parcela e o total de parcelas'); return; }
-    Object.assign(b, v, { upd: Date.now() }); if (novo) S.contratos.push(b); save(); s.remove(); render();
+  const q = id => s.querySelector(id), num = id => { const v = P.money(q(id).value); return isNaN(v) ? 0 : Math.abs(v); }, int = id => Math.max(0, parseInt(q(id).value) || 0);
+  // monta a lista de parcelas a partir do formulário (mantém o "pago" das que já existiam)
+  const monta = () => {
+    const qtd = int('#ct-qtd'), pv = num('#ct-pv'), d0 = q('#ct-pd').value, tot = num('#ct-total'), ev = num('#ct-ev');
+    if (!qtd || !pv || !d0) return null;
+    const L = []; for (let k = 0; k < qtd; k++) L.push({ n: k + 1, venc: addMeses(d0, k), valor: P0 && P0[k] && !P0[k].final && (P0[k].reaj || (b.variavel && P0[k].pago)) ? P0[k].valor : pv });
+    // última parcela calculada para fechar o total
+    monta.aviso = '';
+    if (tot) { const dif = Math.round((tot - ev - L.reduce((a, x) => a + x.valor, 0)) * 100) / 100;
+      if (dif > 0.009 && dif < pv - 0.009) L.push({ n: qtd + 1, venc: addMeses(d0, qtd), valor: dif, final: true });
+      else if (dif < -0.009 && -dif < pv - 0.009) { const u = L[L.length - 1]; u.valor = Math.round((u.valor + dif) * 100) / 100; u.final = true; }
+      else if (Math.abs(dif) > 0.009) monta.aviso = dif > 0 ? `Faltam ${brl(dif)} para chegar no total: confira a quantidade ou o valor das parcelas.` : `As parcelas passam do total em ${brl(-dif)}: confira.`; }
+    const pag = Math.min(L.length, int('#ct-pag'));
+    const mesmo = P0 && int('#ct-pag') === ini.pagas;
+    L.forEach((x, k) => { const old = P0 && P0[k]; x.pago = mesmo ? !!(old && old.pago) : k < pag; if (x.pago) x.pagoEm = (old && old.pago && old.pagoEm) || x.venc; if (old && old.manual) x.manual = true; });
+    return L;
+  };
+  const resumo = () => { if (doPdf) return; const L = monta(), ev = num('#ct-ev'), tot = num('#ct-total'), el = q('#ct-resumo');
+    if (!L) { el.textContent = 'Preencha quantidade, valor e 1º vencimento das parcelas.'; return; }
+    const soma = ev + L.reduce((a, x) => a + x.valor, 0), ult = L[L.length - 1];
+    el.innerHTML = `${L.length} parcela(s), a última em ${dshort(ult.venc)}/${ult.venc.slice(0, 4)}${ult.final ? ` de <b>${esc(brl(ult.valor))}</b>, para fechar o total` : ''}. Soma com a entrada: <b>${esc(brl(soma))}</b>${tot && Math.abs(tot - soma) < 0.01 ? ' <span style="color:var(--grn)">· confere com o total</span>' : ''}.${monta.aviso ? ` <span style="color:var(--amb)">${esc(monta.aviso)}</span>` : ''}`; };
+  s.querySelectorAll('input').forEach(x => x.addEventListener('input', resumo));
+  resumo();
+  if (q('#ct-reaj')) q('#ct-reaj').onclick = () => {
+    const r = sheet(`<h2>Mudar o valor da parcela</h2><p class="small muted" style="margin-top:-4px">Vale para as parcelas ainda não pagas que vencem a partir da data.</p>
+      <div class="grid2"><div><label class="l">A partir de</label><input class="f" id="rj-d" type="date" value="${(b.parcelas.find(x => !x.pago) || {}).venc || today()}"></div><div><label class="l">Novo valor (R$)</label><input class="f" id="rj-v" inputmode="decimal"></div></div>
+      <div class="grid2" style="margin-top:14px"><button class="btn" data-fechar>Cancelar</button><button class="btn pri" id="rj-ok">Aplicar</button></div>`);
+    r.querySelector('#rj-ok').onclick = () => { const d = r.querySelector('#rj-d').value, v = Math.abs(P.money(r.querySelector('#rj-v').value)); if (!d || !v) { toast('Preencha a data e o valor'); return; }
+      let n = 0; for (const x of b.parcelas) if (!x.pago && x.venc >= d && !x.final) { x.valor = v; x.reaj = true; n++; }
+      ajustaContrato(b); b.upd = Date.now(); save(); r.remove(); s.remove(); render(); toast(n + ' parcela(s) com o valor novo'); };
+  };
+  s.querySelectorAll('[data-ptog]').forEach(r => r.onclick = () => { const x = b.parcelas[+r.dataset.ptog]; x.pago = !x.pago; x.pagoEm = x.pago ? (x.pagoEm || today()) : undefined; x.manual = true; ajustaContrato(b); b.upd = Date.now(); save(); s.remove(); render(); editarContrato(b); });
+  if (!novo) q('#ct-del').onclick = () => confirma('Excluir esta dívida?', () => { S.contratos = S.contratos.filter(x => x !== c); marcaApagado('contratos', c.id); save(); s.remove(); render(); }, 'Excluir');
+  q('#ct-ok').onclick = () => {
+    const tipo = q('#ct-tipo').value, nome = q('#ct-nome').value.trim() || TIPOS_CONTRATO[tipo];
+    Object.assign(b, { tipo, nome, dono: q('#ct-dono').value, chaves: q('#ct-ch').value.split(',').map(x => x.trim()).filter(Boolean), upd: Date.now() });
+    if (!doPdf) {
+      const L = monta(); if (!L) { toast('Preencha quantidade, valor e 1º vencimento das parcelas'); return; }
+      const ev = num('#ct-ev');
+      b.entrada = ev ? { valor: ev, data: q('#ct-ed').value || '', pago: q('#ct-ep').checked, pagoEm: q('#ct-ep').checked ? (b.entrada && b.entrada.pagoEm) || q('#ct-ed').value || undefined : undefined } : undefined;
+      b.valorTotal = num('#ct-total') || undefined; b.parcelas = L; b.manual = true; b.variavel = q('#ct-var').checked || undefined;
+      ajustaContrato(b);
+    }
+    if (novo) S.contratos.push(b);
+    baixaContratos(); save(); s.remove(); render(); toast('Dívida salva');
   };
 }
 
