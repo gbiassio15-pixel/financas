@@ -368,7 +368,7 @@ P.parsePDF = function (lines, refYear) {
       const m = t.match(/^\s*(\S+)\s{2,}(.+?)\s{2,}(\d{2}\/\d{2}\/\d{4})\s{2,}(.*?)\s{2,}(-?[\d.]+,\d{2})\s*$/);
       if (!m) continue;
       const venc = P.date(m[3]);
-      rows.push({ data: P.addDays(venc, -30), venc, valor: -Math.abs(P.money(m[5])), desc: m[2].trim(), fitid: 'bc:' + m[1], obs: m[4].trim() });
+      rows.push({ data: P.addDays(venc, -30), venc, valor: -Math.abs(P.money(m[5])), desc: m[2].trim(), fitid: 'bc:' + m[1], obs: m[4].trim(), aberto: true });
     }
     return { formato: 'PDF', banco: 'BônusCred', tipo: 'loja', prazo: 30, rows };
   }
@@ -378,7 +378,11 @@ P.parsePDF = function (lines, refYear) {
     const start = all.findIndex(t => /DETALHE DOS MOVIMENTOS/i.test(P.norm(t)));
     let end = all.findIndex((t, i) => i > start && /DATA DE GERACAO|VOCE TEM ALGUMA DUVIDA/.test(P.norm(t)));
     if (end < 0) end = all.length;
-    const sec = lines.slice(start + 1, end).filter(l => !/^\s*DATA\s+DESCRI/.test(P.norm(l.text)));
+    let pg = 0; const sec = [];
+    for (const l of lines.slice(start + 1, end)) { const N = P.norm(l.text).trim();
+      if (/^\d+\s*\/\s*\d+$/.test(N)) { pg++; continue; }
+      if (/^DATA\s*(DATA)?\s*DESCRI|ID DA OPERACAO|DESCRICAO\s*DESCRICAO/.test(N)) continue;
+      sec.push(Object.assign({}, l, { pg })); }
     const anchors = [];
     sec.forEach((l, i) => { if (/^\s*\d{2}-\d{2}-\d{4}/.test(l.text)) anchors.push(i); });
     const rows = anchors.map(i => {
@@ -388,16 +392,18 @@ P.parsePDF = function (lines, refYear) {
       const after = l.text.slice(l.text.indexOf(m[4]) + m[4].length).match(/R\$\s*-?[\d.]+,\d{2}/);
       return { y: l.y, data: P.date(m[1]), desc: m[2].trim(), fitid: 'mp:' + m[3], valor: P.money(m[4]), _saldo: after ? P.money(after[0]) : null };
     }).filter(Boolean);
+    rows.forEach((r, k) => { r.pg = sec[anchors[k]].pg; });
     sec.forEach((l, i) => {
       if (anchors.includes(i) || !l.text.trim()) return;
       let best = null, bd = 1e9;
-      for (const r of rows) { const d = Math.abs(r.y - l.y); if (d < bd) { bd = d; best = r; } }
-      if (best && bd < 30) (best.extra = best.extra || []).push({ y: l.y, t: l.text.trim() });
+      for (const r of rows) { if (r.pg !== l.pg) continue; const d = Math.abs(r.y - l.y); if (d < bd) { bd = d; best = r; } }
+      if (best && bd < 16) (best.extra = best.extra || []).push({ y: l.y, t: l.text.trim() });
+      else { const prox = rows.find(r => r.pg === l.pg + 1); const ult = !rows.some(r => r.pg === l.pg && r.y > l.y); if (ult && prox) (prox.extra = prox.extra || []).push({ y: -1, t: l.text.trim() }); }
     });
     for (const r of rows) {
       const parts = [{ y: r.y, t: r.desc }].concat(r.extra || []).filter(p => p.t).sort((a, b) => a.y - b.y);
       r.desc = parts.map(p => p.t).join(' ').replace(/\s+/g, ' ').trim();
-      delete r.extra; delete r.y;
+      delete r.extra; delete r.y; delete r.pg;
     }
     let saldo = null, saldoData = null;
     const sf = all.map(P.norm).find(t => /SALDO FINAL/.test(t));
@@ -480,7 +486,7 @@ P.SEED_RULES = [
   ['TRANSFERENCIA CONTA SALARIO', 'Salário', '', 'receita'], ['SALARIO', 'Salário', '', 'receita'],
   ['PAGAMENTO DE FATURA', '', '', 'pagdivida'], ['PAGAMENTO RECEBIDO', '', '', 'neutro'],
   ['BNC CADASTROS', 'BônusCred', '', 'pagdivida'], ['BONUSPAGO', 'BônusCred', '', 'pagdivida'],
-  ['MIDWAY', 'Riachuelo', '', 'pagdivida'], ['SHPP BRASIL', 'Shopee', '', 'pagdivida'],
+  ['MIDWAY', 'Riachuelo', '', 'pagdivida'], ['SHPP BRASIL', 'Shopee', '', 'pagdivida'], ['MAREE', 'Shopee', '', 'pagdivida'],
   ['RESGATE DE EMPRESTIMO', 'Empréstimo', '', 'pagdivida'],
   ['CREDITO EM CONTA', 'Empréstimo', '', 'entdivida'],
   ['VALOR ADICIONADO NA CONTA POR CARTAO DE CREDITO', '', '', 'neutro'],
@@ -488,6 +494,7 @@ P.SEED_RULES = [
   ['DINHEIRO RESERVADO', 'Investimento', '', 'transf'], ['DINHEIRO RETIRADO', 'Investimento', '', 'transf'], ['COFRINHO', 'Investimento', '', 'transf'],
   ['DINHEIRO GUARDADO', 'Investimento', '', 'transf'], ['DINHEIRO RESGATADO', 'Investimento', '', 'transf'], ['APLICACAO RDB', 'Investimento', '', 'transf'], ['RESGATE RDB', 'Investimento', '', 'transf'],
   ['RENDIMENTO', 'Rendimentos', '', 'receita'],
+  ['CAIU SALDO', 'Benefícios', '', 'receita'], ['DESCONTO NA FATURA', 'Outros', '', 'despesa'],
   ['CAIXA ECONOMICA FEDERAL', 'Saque-aniversário FGTS', '', 'receita', 1], ['FGTS', 'Saque-aniversário FGTS', '', 'receita', 1],
   ['PAGAMENTO DE EMPRESTIMO', 'Empréstimo', '', 'pagdivida'], ['PARCELA DE EMPRESTIMO', 'Empréstimo', '', 'pagdivida'], ['MERCADO CREDITO', 'Empréstimo', '', 'pagdivida', -1],
   ['ANTECIPACAO SAQUE ANIVERSARIO', 'Adiantamento do FGTS', '', 'entdivida'], ['SAQUE ANIVERSARIO', 'Adiantamento do FGTS', '', 'entdivida'],
@@ -563,9 +570,9 @@ const ICO = {
   x: '<path d="M18 6 6 18M6 6l12 12"/>', search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
 };
-const TI = {"home":"<path d=\"M5 12l-2 0l9 -9l9 9l-2 0\" /> <path d=\"M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7\" /> <path d=\"M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6\" />","bulb":"<path d=\"M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7\" /> <path d=\"M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3\" /> <path d=\"M9.7 17l4.6 0\" />","shopping-cart":"<path d=\"M4 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M17 17h-11v-14h-2\" /> <path d=\"M6 5l14 1l-1 7h-13\" />","tools-kitchen-2":"<path d=\"M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12m0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3\" />","car":"<path d=\"M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5\" />","first-aid-kit":"<path d=\"M8 8v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2\" /> <path d=\"M4 10a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -8\" /> <path d=\"M10 14h4\" /> <path d=\"M12 12v4\" />","shirt":"<path d=\"M15 4l6 2v5h-3v8a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1v-8h-3v-5l6 -2a3 3 0 0 0 6 0\" />","scissors":"<path d=\"M3 7a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M3 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M8.6 8.6l10.4 10.4\" /> <path d=\"M8.6 15.4l10.4 -10.4\" />","armchair":"<path d=\"M5 11a2 2 0 0 1 2 2v2h10v-2a2 2 0 1 1 4 0v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2\" /> <path d=\"M5 11v-5a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v5\" /> <path d=\"M6 19v2\" /> <path d=\"M18 19v2\" />","shopping-bag":"<path d=\"M6.331 8h11.339a2 2 0 0 1 1.977 2.304l-1.255 8.152a3 3 0 0 1 -2.966 2.544h-6.852a3 3 0 0 1 -2.965 -2.544l-1.255 -8.152a2 2 0 0 1 1.977 -2.304\" /> <path d=\"M9 11v-5a3 3 0 0 1 6 0v5\" />","device-mobile":"<path d=\"M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14\" /> <path d=\"M11 4h2\" /> <path d=\"M12 17v.01\" />","device-tv":"<path d=\"M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9\" /> <path d=\"M16 3l-4 4l-4 -4\" />","receipt-tax":"<path d=\"M9 14l6 -6\" /> <path d=\"M9 8.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M14 13.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2\" />","building-bank":"<path d=\"M3 21l18 0\" /> <path d=\"M3 10l18 0\" /> <path d=\"M5 6l7 -3l7 3\" /> <path d=\"M4 10l0 11\" /> <path d=\"M20 10l0 11\" /> <path d=\"M8 14l0 3\" /> <path d=\"M12 14l0 3\" /> <path d=\"M16 14l0 3\" />","trending-down":"<path d=\"M3 7l6 6l4 -4l8 8\" /> <path d=\"M21 10l0 7l-7 0\" />","package":"<path d=\"M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5\" /> <path d=\"M12 12l8 -4.5\" /> <path d=\"M12 12l0 9\" /> <path d=\"M12 12l-8 -4.5\" /> <path d=\"M16 5.25l-8 4.5\" />","briefcase":"<path d=\"M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9\" /> <path d=\"M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2\" /> <path d=\"M12 12l0 .01\" /> <path d=\"M3 13a20 20 0 0 0 18 0\" />","gift":"<path d=\"M3 9a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1l0 -2\" /> <path d=\"M12 8l0 13\" /> <path d=\"M19 12v7a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7\" /> <path d=\"M7.5 8a2.5 2.5 0 0 1 0 -5a4.8 8 0 0 1 4.5 5a4.8 8 0 0 1 4.5 -5a2.5 2.5 0 0 1 0 5\" />","chart-line":"<path d=\"M4 19l16 0\" /> <path d=\"M4 15l4 -6l4 2l4 -5l4 4\" />","coin":"<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /> <path d=\"M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1\" /> <path d=\"M12 7v10\" />","pig-money":"<path d=\"M15 11v.01\" /> <path d=\"M5.173 8.378a3 3 0 1 1 4.656 -1.377\" /> <path d=\"M16 4v3.803a6.019 6.019 0 0 1 2.658 3.197h1.341a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1.342c-.336 .95 -.907 1.8 -1.658 2.473v2.027a1.5 1.5 0 0 1 -3 0v-.583a6.04 6.04 0 0 1 -1 .083h-4a6.04 6.04 0 0 1 -1 -.083v.583a1.5 1.5 0 0 1 -3 0v-2l0 -.027a6 6 0 0 1 4 -10.473h2.5l4.5 -3\" />","building-store":"<path d=\"M3 21l18 0\" /> <path d=\"M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4\" /> <path d=\"M5 21l0 -10.15\" /> <path d=\"M19 21l0 -10.15\" /> <path d=\"M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4\" />","credit-card":"<path d=\"M3 8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -8\" /> <path d=\"M3 10l18 0\" /> <path d=\"M7 15l.01 0\" /> <path d=\"M11 15l2 0\" />","file-dollar":"<path d=\"M14 3v4a1 1 0 0 0 1 1h4\" /> <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" /> <path d=\"M14 11h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5\" /> <path d=\"M12 17v1m0 -8v1\" />","arrows-exchange":"<path d=\"M7 10h14l-4 -4\" /> <path d=\"M17 14h-14l4 4\" />","credit-card-pay":"<path d=\"M12 19h-6a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v4.5\" /> <path d=\"M3 10h18\" /> <path d=\"M16 19h6\" /> <path d=\"M19 16l3 3l-3 3\" /> <path d=\"M7.005 15h.005\" /> <path d=\"M11 15h2\" />","player-pause":"<path d=\"M6 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12\" /> <path d=\"M14 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12\" />","help-circle":"<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /> <path d=\"M12 16v.01\" /> <path d=\"M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483\" />","sun":"<path d=\"M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" /> <path d=\"M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7\" />","moon":"<path d=\"M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008\" />","repeat":"<path d=\"M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3\" /> <path d=\"M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3\" />","chart-bar":"<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6\" /> <path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10\" /> <path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14\" /> <path d=\"M4 20h14\" />","calendar-event":"<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\" /> <path d=\"M16 3l0 4\" /> <path d=\"M8 3l0 4\" /> <path d=\"M4 11l16 0\" /> <path d=\"M8 15h2v2h-2l0 -2\" />","arrow-down-left":"<path d=\"M17 7l-10 10\" /> <path d=\"M16 17l-9 0l0 -9\" />","arrow-up-right":"<path d=\"M17 7l-10 10\" /> <path d=\"M8 7l9 0l0 9\" />","photo":"<path d=\"M15 8h.01\" /> <path d=\"M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12\" /> <path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5\" /> <path d=\"M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3\" />","upload":"<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\" /> <path d=\"M7 9l5 -5l5 5\" /> <path d=\"M12 4l0 12\" />","plus":"<path d=\"M12 5l0 14\" /> <path d=\"M5 12l14 0\" />","list":"<path d=\"M9 6l11 0\" /> <path d=\"M9 12l11 0\" /> <path d=\"M9 18l11 0\" /> <path d=\"M5 6l0 .01\" /> <path d=\"M5 12l0 .01\" /> <path d=\"M5 18l0 .01\" />","settings":"<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065\" /> <path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />","chevron-left":"<path d=\"M15 6l-6 6l6 6\" />","chevron-right":"<path d=\"M9 6l6 6l-6 6\" />","x":"<path d=\"M18 6l-12 12\" /> <path d=\"M6 6l12 12\" />","search":"<path d=\"M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\" /> <path d=\"M21 21l-6 -6\" />","file":"<path d=\"M14 3v4a1 1 0 0 0 1 1h4\" /> <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" />","cloud":"<path d=\"M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878\" />","cloud-off":"<path d=\"M9.58 5.548c.24 -.11 .492 -.207 .752 -.286c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 .957 -.383 1.824 -1.003 2.454m-2.997 1.033h-11.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.13 -.582 .37 -1.128 .7 -1.62\" /> <path d=\"M3 3l18 18\" />","refresh":"<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\" /> <path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\" />","logout":"<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\" /> <path d=\"M9 12h12l-3 -3\" /> <path d=\"M18 15l3 -3\" />","user":"<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\" /> <path d=\"M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\" />","calendar-repeat":"<path d=\"M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3\" /> <path d=\"M16 3v4\" /> <path d=\"M8 3v4\" /> <path d=\"M4 11h12\" /> <path d=\"M20 14l2 2h-3\" /> <path d=\"M20 18l2 -2\" /> <path d=\"M19 16a3 3 0 1 0 2 5.236\" />","download":"<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\" /> <path d=\"M7 11l5 5l5 -5\" /> <path d=\"M12 4l0 12\" />","alert-triangle":"<path d=\"M12 9v4\" /> <path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0\" /> <path d=\"M12 16h.01\" />","check":"<path d=\"M5 12l5 5l10 -10\" />","bolt":"<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />","cash":"<path d=\"M7 15h-3a1 1 0 0 1 -1 -1v-8a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v3\" /> <path d=\"M7 10a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8\" /> <path d=\"M12 14a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\" />","wallet":"<path d=\"M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12\" /> <path d=\"M20 12v4h-4a2 2 0 0 1 0 -4h4\" />","sparkles":"<path d=\"M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6\" />"};
+const TI = {"home":"<path d=\"M5 12l-2 0l9 -9l9 9l-2 0\" /> <path d=\"M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7\" /> <path d=\"M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6\" />","bulb":"<path d=\"M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7\" /> <path d=\"M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3\" /> <path d=\"M9.7 17l4.6 0\" />","shopping-cart":"<path d=\"M4 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M17 17h-11v-14h-2\" /> <path d=\"M6 5l14 1l-1 7h-13\" />","tools-kitchen-2":"<path d=\"M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12m0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3\" />","car":"<path d=\"M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5\" />","first-aid-kit":"<path d=\"M8 8v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2\" /> <path d=\"M4 10a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -8\" /> <path d=\"M10 14h4\" /> <path d=\"M12 12v4\" />","shirt":"<path d=\"M15 4l6 2v5h-3v8a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1v-8h-3v-5l6 -2a3 3 0 0 0 6 0\" />","scissors":"<path d=\"M3 7a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M3 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M8.6 8.6l10.4 10.4\" /> <path d=\"M8.6 15.4l10.4 -10.4\" />","armchair":"<path d=\"M5 11a2 2 0 0 1 2 2v2h10v-2a2 2 0 1 1 4 0v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2\" /> <path d=\"M5 11v-5a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v5\" /> <path d=\"M6 19v2\" /> <path d=\"M18 19v2\" />","shopping-bag":"<path d=\"M6.331 8h11.339a2 2 0 0 1 1.977 2.304l-1.255 8.152a3 3 0 0 1 -2.966 2.544h-6.852a3 3 0 0 1 -2.965 -2.544l-1.255 -8.152a2 2 0 0 1 1.977 -2.304\" /> <path d=\"M9 11v-5a3 3 0 0 1 6 0v5\" />","device-mobile":"<path d=\"M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14\" /> <path d=\"M11 4h2\" /> <path d=\"M12 17v.01\" />","device-tv":"<path d=\"M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9\" /> <path d=\"M16 3l-4 4l-4 -4\" />","receipt-tax":"<path d=\"M9 14l6 -6\" /> <path d=\"M9 8.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M14 13.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2\" />","building-bank":"<path d=\"M3 21l18 0\" /> <path d=\"M3 10l18 0\" /> <path d=\"M5 6l7 -3l7 3\" /> <path d=\"M4 10l0 11\" /> <path d=\"M20 10l0 11\" /> <path d=\"M8 14l0 3\" /> <path d=\"M12 14l0 3\" /> <path d=\"M16 14l0 3\" />","trending-down":"<path d=\"M3 7l6 6l4 -4l8 8\" /> <path d=\"M21 10l0 7l-7 0\" />","package":"<path d=\"M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5\" /> <path d=\"M12 12l8 -4.5\" /> <path d=\"M12 12l0 9\" /> <path d=\"M12 12l-8 -4.5\" /> <path d=\"M16 5.25l-8 4.5\" />","briefcase":"<path d=\"M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9\" /> <path d=\"M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2\" /> <path d=\"M12 12l0 .01\" /> <path d=\"M3 13a20 20 0 0 0 18 0\" />","gift":"<path d=\"M3 9a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1l0 -2\" /> <path d=\"M12 8l0 13\" /> <path d=\"M19 12v7a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7\" /> <path d=\"M7.5 8a2.5 2.5 0 0 1 0 -5a4.8 8 0 0 1 4.5 5a4.8 8 0 0 1 4.5 -5a2.5 2.5 0 0 1 0 5\" />","chart-line":"<path d=\"M4 19l16 0\" /> <path d=\"M4 15l4 -6l4 2l4 -5l4 4\" />","coin":"<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /> <path d=\"M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1\" /> <path d=\"M12 7v10\" />","pig-money":"<path d=\"M15 11v.01\" /> <path d=\"M5.173 8.378a3 3 0 1 1 4.656 -1.377\" /> <path d=\"M16 4v3.803a6.019 6.019 0 0 1 2.658 3.197h1.341a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1.342c-.336 .95 -.907 1.8 -1.658 2.473v2.027a1.5 1.5 0 0 1 -3 0v-.583a6.04 6.04 0 0 1 -1 .083h-4a6.04 6.04 0 0 1 -1 -.083v.583a1.5 1.5 0 0 1 -3 0v-2l0 -.027a6 6 0 0 1 4 -10.473h2.5l4.5 -3\" />","building-store":"<path d=\"M3 21l18 0\" /> <path d=\"M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4\" /> <path d=\"M5 21l0 -10.15\" /> <path d=\"M19 21l0 -10.15\" /> <path d=\"M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4\" />","credit-card":"<path d=\"M3 8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -8\" /> <path d=\"M3 10l18 0\" /> <path d=\"M7 15l.01 0\" /> <path d=\"M11 15l2 0\" />","file-dollar":"<path d=\"M14 3v4a1 1 0 0 0 1 1h4\" /> <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" /> <path d=\"M14 11h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5\" /> <path d=\"M12 17v1m0 -8v1\" />","arrows-exchange":"<path d=\"M7 10h14l-4 -4\" /> <path d=\"M17 14h-14l4 4\" />","credit-card-pay":"<path d=\"M12 19h-6a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v4.5\" /> <path d=\"M3 10h18\" /> <path d=\"M16 19h6\" /> <path d=\"M19 16l3 3l-3 3\" /> <path d=\"M7.005 15h.005\" /> <path d=\"M11 15h2\" />","player-pause":"<path d=\"M6 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12\" /> <path d=\"M14 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12\" />","help-circle":"<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /> <path d=\"M12 16v.01\" /> <path d=\"M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483\" />","sun":"<path d=\"M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" /> <path d=\"M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7\" />","moon":"<path d=\"M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008\" />","repeat":"<path d=\"M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3\" /> <path d=\"M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3\" />","chart-bar":"<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6\" /> <path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10\" /> <path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14\" /> <path d=\"M4 20h14\" />","calendar-event":"<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\" /> <path d=\"M16 3l0 4\" /> <path d=\"M8 3l0 4\" /> <path d=\"M4 11l16 0\" /> <path d=\"M8 15h2v2h-2l0 -2\" />","arrow-down-left":"<path d=\"M17 7l-10 10\" /> <path d=\"M16 17l-9 0l0 -9\" />","arrow-up-right":"<path d=\"M17 7l-10 10\" /> <path d=\"M8 7l9 0l0 9\" />","photo":"<path d=\"M15 8h.01\" /> <path d=\"M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12\" /> <path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5\" /> <path d=\"M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3\" />","upload":"<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\" /> <path d=\"M7 9l5 -5l5 5\" /> <path d=\"M12 4l0 12\" />","plus":"<path d=\"M12 5l0 14\" /> <path d=\"M5 12l14 0\" />","list":"<path d=\"M9 6l11 0\" /> <path d=\"M9 12l11 0\" /> <path d=\"M9 18l11 0\" /> <path d=\"M5 6l0 .01\" /> <path d=\"M5 12l0 .01\" /> <path d=\"M5 18l0 .01\" />","settings":"<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065\" /> <path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />","chevron-left":"<path d=\"M15 6l-6 6l6 6\" />","chevron-right":"<path d=\"M9 6l6 6l-6 6\" />","x":"<path d=\"M18 6l-12 12\" /> <path d=\"M6 6l12 12\" />","search":"<path d=\"M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\" /> <path d=\"M21 21l-6 -6\" />","file":"<path d=\"M14 3v4a1 1 0 0 0 1 1h4\" /> <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" />","cloud":"<path d=\"M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878\" />","cloud-off":"<path d=\"M9.58 5.548c.24 -.11 .492 -.207 .752 -.286c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 .957 -.383 1.824 -1.003 2.454m-2.997 1.033h-11.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.13 -.582 .37 -1.128 .7 -1.62\" /> <path d=\"M3 3l18 18\" />","refresh":"<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\" /> <path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\" />","logout":"<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\" /> <path d=\"M9 12h12l-3 -3\" /> <path d=\"M18 15l3 -3\" />","user":"<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\" /> <path d=\"M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\" />","calendar-repeat":"<path d=\"M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3\" /> <path d=\"M16 3v4\" /> <path d=\"M8 3v4\" /> <path d=\"M4 11h12\" /> <path d=\"M20 14l2 2h-3\" /> <path d=\"M20 18l2 -2\" /> <path d=\"M19 16a3 3 0 1 0 2 5.236\" />","download":"<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\" /> <path d=\"M7 11l5 5l5 -5\" /> <path d=\"M12 4l0 12\" />","alert-triangle":"<path d=\"M12 9v4\" /> <path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0\" /> <path d=\"M12 16h.01\" />","check":"<path d=\"M5 12l5 5l10 -10\" />","bolt":"<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />","cash":"<path d=\"M7 15h-3a1 1 0 0 1 -1 -1v-8a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v3\" /> <path d=\"M7 10a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8\" /> <path d=\"M12 14a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\" />","wallet":"<path d=\"M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12\" /> <path d=\"M20 12v4h-4a2 2 0 0 1 0 -4h4\" />","sparkles":"<path d=\"M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6\" />","pig":"<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />\n  <path d=\"M15 11v.01\" />\n  <path d=\"M16 3l0 3.803a6.019 6.019 0 0 1 2.658 3.197h1.341a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1.342a6.008 6.008 0 0 1 -1.658 2.473v2.027a1.5 1.5 0 0 1 -3 0v-.583a6.04 6.04 0 0 1 -1 .083h-4a6.04 6.04 0 0 1 -1 -.083v.583a1.5 1.5 0 0 1 -3 0v-2l0 -.027a6 6 0 0 1 4 -10.473h2.5l4.5 -3\" />","link":"<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />\n  <path d=\"M9 15l6 -6\" />\n  <path d=\"M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464\" />\n  <path d=\"M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463\" />","trending-up":"<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />\n  <path d=\"M3 17l6 -6l4 4l8 -8\" />\n  <path d=\"M14 7l7 0l0 7\" />"};
 const ti = (n, size = 20, extra = '') => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${TI[n] || TI['help-circle']}</svg>`;
-const ICON_CAT = { 'Casa': 'home', 'Contas da casa': 'bulb', 'Mercado e padaria': 'shopping-cart', 'Comer fora': 'tools-kitchen-2', 'Carro': 'car', 'Saúde': 'first-aid-kit', 'Vestuário': 'shirt', 'Beleza': 'scissors', 'Casa e eletro': 'armchair', 'Variedades': 'shopping-bag', 'Eletrônicos': 'device-mobile', 'Assinaturas': 'device-tv', 'Impostos e taxas': 'receipt-tax', 'Banco': 'building-bank', 'Dívidas': 'trending-down', 'Outros': 'package', 'Salário': 'briefcase', '13º salário': 'gift', 'Rendimentos': 'chart-line', 'Outras entradas': 'coin', 'Saque-aniversário FGTS': 'pig-money', 'Retirada do MEI': 'building-store', 'Empréstimo': 'building-bank', 'Limite do cartão': 'credit-card', 'Adiantamento do FGTS': 'file-dollar', 'Investimento': 'pig-money' };
+const ICON_CAT = { 'Casa': 'home', 'Contas da casa': 'bulb', 'Mercado e padaria': 'shopping-cart', 'Comer fora': 'tools-kitchen-2', 'Carro': 'car', 'Saúde': 'first-aid-kit', 'Vestuário': 'shirt', 'Beleza': 'scissors', 'Casa e eletro': 'armchair', 'Variedades': 'shopping-bag', 'Eletrônicos': 'device-mobile', 'Assinaturas': 'device-tv', 'Impostos e taxas': 'receipt-tax', 'Banco': 'building-bank', 'Dívidas': 'trending-down', 'Outros': 'package', 'Salário': 'briefcase', '13º salário': 'gift', 'Rendimentos': 'chart-line', 'Outras entradas': 'coin', 'Saque-aniversário FGTS': 'pig-money', 'Retirada do MEI': 'building-store', 'Benefícios': 'wallet', 'Empréstimo': 'building-bank', 'Limite do cartão': 'credit-card', 'Adiantamento do FGTS': 'file-dollar', 'Investimento': 'pig-money' };
 function catIc(tipo, nome, size = 40) {
   const ci = catInfo(tipo, nome);
   let n = ci.i || ICON_CAT[nome] || ({ transf: 'arrows-exchange', pagdivida: 'credit-card-pay', neutro: 'player-pause' })[tipo] || (tipo === 'receita' ? 'coin' : 'help-circle');
@@ -595,7 +602,7 @@ const CATS_DESP = [
   ['Dívidas', '📉', '#B26B00', ['Parcela de empréstimo']],
   ['Outros', '📦', '#9196A1', []],
 ];
-const CATS_REC = [['Salário', '💼', '#3F8A14'], ['13º salário', '🎁', '#0B8A6F'], ['Rendimentos', '📈', '#0B8A6F'], ['Saque-aniversário FGTS', '🐷', '#2F7BE5'], ['Retirada do MEI', '🏪', '#6D5FD9'], ['Outras entradas', '💰', '#2F7BE5']];
+const CATS_REC = [['Salário', '💼', '#3F8A14'], ['13º salário', '🎁', '#0B8A6F'], ['Rendimentos', '📈', '#0B8A6F'], ['Saque-aniversário FGTS', '🐷', '#2F7BE5'], ['Retirada do MEI', '🏪', '#6D5FD9'], ['Benefícios', '🎫', '#F2416B'], ['Outras entradas', '💰', '#2F7BE5']];
 const CATS_ENTDIV = [['Empréstimo', '🏦', '#B26B00'], ['Limite do cartão', '💳', '#B26B00'], ['Adiantamento do FGTS', '📄', '#B26B00']];
 const TIPOS = { despesa: 'Despesa', receita: 'Entrada', entdivida: 'Entrada que é dívida', transf: 'Transferência entre contas', pagdivida: 'Pagamento de fatura/dívida', neutro: 'Ignorar', };
 
@@ -609,12 +616,12 @@ function seed() {
     ],
     contas: [
       A('g-sicredi', 'Sicredi', 'p1', 'conta', 'Sicredi'), A('g-nubank', 'Nubank', 'p1', 'conta', 'Nubank'), A('g-inter', 'Inter', 'p1', 'conta', 'Inter'),
-      A('g-mp', 'Mercado Pago', 'p1', 'conta', 'Mercado Pago'), A('g-nucard', 'Cartão Nubank', 'p1', 'cartao', 'Nubank', { fech: null, venc: null }),
+      A('g-mp', 'Mercado Pago', 'p1', 'conta', 'Mercado Pago'), A('g-nucard', 'Cartão Nubank', 'p1', 'cartao', 'Nubank', { fech: null, venc: null, pagaPor: 'g-nubank' }),
       A('g-caju', 'Caju', 'p1', 'beneficio', 'Caju', { saldoIni: 0 }),
       A('m-sicredi', 'Sicredi', 'p2', 'conta', 'Sicredi'), A('m-nubank', 'Nubank', 'p2', 'conta', 'Nubank'), A('m-mp', 'Mercado Pago', 'p2', 'conta', 'Mercado Pago'),
-      A('m-nucard', 'Cartão Nubank', 'p2', 'cartao', 'Nubank', { fech: null, venc: null }), A('m-bonus', 'BônusCred', 'p2', 'loja', 'BônusCred', { prazo: 30 }),
-      A('m-flash', 'Flash', 'p2', 'beneficio', 'Flash', { saldoIni: 0 }), A('m-shopee', 'Shopee', 'p2', 'loja', 'Shopee', { fech: null, venc: null }),
-      A('m-riach', 'Riachuelo', 'p2', 'loja', 'Riachuelo', { fech: null, venc: null }), A('m-mpcred', 'Mercado Pago Crédito', 'p2', 'loja', 'Mercado Pago', { fech: null, venc: null }),
+      A('m-nucard', 'Cartão Nubank', 'p2', 'cartao', 'Nubank', { fech: null, venc: null, pagaPor: 'm-nubank' }), A('m-bonus', 'BônusCred', 'p2', 'loja', 'BônusCred', { prazo: 30, pagChaves: ['BNC CADASTROS', 'BONUSPAGO'] }),
+      A('m-flash', 'Flash', 'p2', 'beneficio', 'Flash', { saldoIni: 0 }), A('m-shopee', 'Shopee', 'p2', 'loja', 'Shopee', { fech: null, venc: null, pagChaves: ['MAREE', 'SHPP BRASIL'] }),
+      A('m-riach', 'Riachuelo', 'p2', 'loja', 'Riachuelo', { fech: null, venc: null, pagChaves: ['MIDWAY'] }), A('m-mpcred', 'Mercado Pago Crédito', 'p2', 'loja', 'Mercado Pago', { fech: null, venc: null, pagaPor: 'm-mp' }),
     ],
     cats: {
       despesa: CATS_DESP.map(([nome, e, cor, subs]) => ({ nome, e, cor, subs })),
@@ -622,7 +629,7 @@ function seed() {
       entdivida: CATS_ENTDIV.map(([nome, e, cor]) => ({ nome, e, cor, subs: [] })),
     },
     regras: P.SEED_RULES.map(r => Object.assign({ upd: 1 }, r)),
-    mig: 4, orc: {}, orcUpd: {}, tx: [], contratos: [], fixas: [], meiChaves: [], ultimoBackup: null, mud: 0,
+    mig: 6, orc: {}, orcUpd: {}, tx: [], contratos: [], fixas: [], meiChaves: [], ultimoBackup: null, mud: 0,
   };
 }
 function load() { try { const t = localStorage.getItem(KEY); return t ? JSON.parse(t) : null; } catch (e) { storageOk = false; return null; } }
@@ -632,7 +639,13 @@ function migra() {
   if ((S.mig || 1) < 2) migra2();
   if (S.mig < 3) migra3();
   if (S.mig < 4) migra4();
+  if (S.mig < 5) { const temK = new Set(S.regras.map(r => P.norm(r.k))); for (const r of P.SEED_RULES) if (!temK.has(P.norm(r.k))) S.regras.push(Object.assign({ upd: 1 }, r));
+    for (const [nome, e, cor] of CATS_REC) if (!S.cats.receita.some(c => c.nome === nome)) S.cats.receita.splice(Math.max(0, S.cats.receita.length - 1), 0, { nome, e, cor, subs: [] }); S.mig = 5; salvaLocal(); }
+  if (S.mig < 6) { const pad = seed().contas; for (const c of S.contas) { const o = pad.find(x => x.id === c.id); if (!o) continue; if (o.pagaPor && !c.pagaPor && conta(o.pagaPor)) c.pagaPor = o.pagaPor; if (o.pagChaves && !c.pagChaves) c.pagChaves = o.pagChaves; }
+    for (const c of S.contas) if (c.tipo === 'invest' && !c.daConta) { const m = S.contas.find(x => x.tipo === 'conta' && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco)); if (m) c.daConta = m.id; }
+    S.mig = 6; salvaLocal(); }
   P.meiChaves = S.meiChaves || [];
+  try { if (conciliaFaturas()) salvaLocal(); } catch (e) { console.warn(e); }
 }
 function migra4() {
   const seedK = new Map(P.SEED_RULES.map(r => [P.norm(r.k), r]));
@@ -703,6 +716,8 @@ function save(conta = true) {
 let _cm = null, _cmArr = null, _cmLen = -1;
 const conta = id => { if (_cmArr !== S.contas || _cmLen !== S.contas.length) { _cm = new Map(S.contas.map(c => [c.id, c])); _cmArr = S.contas; _cmLen = S.contas.length; } return _cm.get(id); };
 // saldo: parte de um saldo conhecido (do extrato OFX ou digitado) e soma o que veio depois
+const rendeuMes = (c, mk) => live().filter(t => t.conta === c.id && t.tipo === 'receita' && t.cat === 'Rendimentos' && mkey(t.data) === mk).reduce((a, t) => a + t.valor, 0);
+const cofrinhosDe = c => S.contas.filter(x => x.tipo === 'invest' && x.daConta === c.id);
 function saldoConta(c) {
   const L = live().filter(t => t.conta === c.id);
   if (c.saldoRef) return c.saldoRef.valor + L.filter(t => t.data > c.saldoRef.data).reduce((a, t) => a + t.valor, 0);
@@ -1017,15 +1032,17 @@ function donut(parts, total) {
   return `<svg viewBox="0 0 128 128" width="128" height="128" style="flex:none"><circle r="${R}" cx="64" cy="64" fill="none" stroke="var(--soft)" stroke-width="18"/>${segs}
   <text x="64" y="60" text-anchor="middle" font-size="10" fill="var(--tx2)" font-family="Inter">Despesas</text><text x="64" y="76" text-anchor="middle" font-size="14" font-weight="700" fill="var(--tx)" font-family="Inter">${esc(brl0(total))}</text></svg>`;
 }
+const atrasada = t => t.aberto && !t.pagoEm && t.venc && t.venc < today();
 function proximosVenc(dias = 35) {
   const hoje = today(), lim = P.addDays(hoje, dias); const g = {};
+  const atr = {}; for (const t of live()) if (atrasada(t) && filtraQuem(t)) { atr[t.conta] = atr[t.conta] || { conta: t.conta, venc: t.venc, v: 0, n: 0, atrasada: true }; atr[t.conta].v -= t.valor; atr[t.conta].n++; if (t.venc < atr[t.conta].venc) atr[t.conta].venc = t.venc; }
   for (const t of live()) {
     if (!t.venc || !naFatura(t) || t.venc < hoje || t.venc > lim || !filtraQuem(t)) continue;
     const c = conta(t.conta); const k = c && c.prazo ? t.conta : t.conta + '|' + t.venc;
     if (!g[k]) g[k] = { conta: t.conta, venc: t.venc, v: 0, n: 0, varios: !!(c && c.prazo) };
     g[k].v -= t.valor; g[k].n++; if (t.venc < g[k].venc) g[k].venc = t.venc;
   }
-  const out = Object.values(g);
+  const out = Object.values(atr).concat(Object.values(g));
   for (const f of S.fixas || []) {
     if (f.tipo !== 'despesa' || (V.quem !== 'all' && f.dono !== V.quem)) continue;
     for (const mk of [mkey(hoje), addMonth(mkey(hoje), 1)]) {
@@ -1113,9 +1130,9 @@ function rResumo() {
     ${venc.length ? `<div class="list" style="margin-top:6px">${venc.slice(0, 8).map(v => { const c = v.contrato || v.fixa ? null : conta(v.conta); const atraso = v.venc <= P.addDays(today(), 3);
       const icone = v.fixa ? catIc(v.fixa.tipo, v.fixa.cat) : v.contrato ? (v.contrato.banco ? logoBanco({ banco: v.contrato.banco }) : '<div class="ic" style="background:var(--ambbg);color:var(--amb)">' + ti('home', 20) + '</div>') : logoBanco(c);
       const titulo = v.fixa ? v.fixa.nome : v.contrato ? v.contrato.nome : (c ? c.nome : '');
-      const sub = v.fixa ? 'Conta fixa' : v.contrato ? 'Parcela ' + v.parc + '/' + v.contrato.total : v.n + ' compra(s)' + (v.varios ? ' nos próximos 35 dias' : '');
+      const sub = v.atrasada ? `<b style="color:var(--red)">${v.n} atrasada(s) · cobra juros</b>` : v.fixa ? 'Conta fixa' : v.contrato ? 'Parcela ' + v.parc + '/' + v.contrato.total : v.n + ' compra(s)' + (v.varios ? ' nos próximos 35 dias' : '');
       const dono = v.fixa ? v.fixa.dono : v.contrato ? v.contrato.dono : c && c.dono;
-      return `<div class="it" ${v.fixa ? 'data-tab="fixas"' : 'data-tab="dividas"'}>${icone}<div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(dono)} ${sub}</div></div><div class="val"><div>${esc(brl(v.v))}</div><div class="tiny" style="${atraso ? 'color:var(--red);font-weight:700' : ''}">${v.varios ? 'a partir de ' : ''}${dlabel(v.venc)}</div></div></div>`; }).join('')}</div>`
+      return `<div class="it" ${v.fixa ? 'data-tab="fixas"' : 'data-tab="dividas"'}>${icone}<div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(dono)} ${sub}</div></div><div class="val"><div>${esc(brl(v.v))}</div><div class="tiny" style="${atraso || v.atrasada ? 'color:var(--red);font-weight:700' : ''}">${v.atrasada ? 'venceu ' : v.varios ? 'a partir de ' : ''}${dlabel(v.venc)}</div></div></div>`; }).join('')}</div>`
     : `<div class="small muted" style="margin-top:6px">Nada vencendo nos próximos 35 dias.</div>`}
   </div>
   ${rec.length ? `<div class="card"><div class="row between"><h2 style="margin:0">Cobranças que se repetem</h2><button class="btn sm" data-tab="fixas">Ver</button></div><p class="tiny" style="margin:4px 0 2px">Aparecem todo mês com o mesmo valor. Confira se ainda usam cada uma.</p>
@@ -1127,14 +1144,25 @@ function rResumo() {
   ${contasSaldo.length ? cardSaldos(contasSaldo) : ''}`;
 }
 function cardSaldos(L) {
+  const mk = V.mes;
+  const linha = ({ c, s }, sub) => { const r = rendeuMes(c, mk);
+    return `<div class="it" data-editconta="${c.id}" ${sub ? 'style="padding-left:22px"' : ''}>${sub ? `<div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti('pig', 18)}</div>` : logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${sub ? 'Cofrinho' : donoTag(c.dono)} ${c.saldoRef ? 'em ' + dshort(c.saldoRef.data) : c.tipo === 'conta' ? '' : 'estimado'}</div></div><div class="val ${s != null && s < 0 ? 'neg' : ''}">${s == null ? '<span class="tag amb">informar</span>' : esc(brl(s))}${r > 0.004 ? `<div class="tiny" style="color:var(--grn)">rendeu ${esc(brl(r))}</div>` : ''}</div></div>`; };
   const grupo = (tipos, titulo) => {
-    const G = L.filter(x => tipos.includes(x.c.tipo)); if (!G.length) return '';
-    const conhecidos = G.filter(x => x.s != null), tot = conhecidos.reduce((a, x) => a + x.s, 0);
+    const G = L.filter(x => tipos.includes(x.c.tipo) && !(x.c.tipo === 'invest' && x.c.daConta && L.some(y => y.c.id === x.c.daConta))); if (!G.length) return '';
+    const todos = G.flatMap(x => [x, ...L.filter(y => y.c.tipo === 'invest' && y.c.daConta === x.c.id)]);
+    const conhecidos = todos.filter(x => x.s != null), tot = conhecidos.reduce((a, x) => a + x.s, 0);
     return `<div class="row between" style="margin:12px 0 2px"><span class="tiny" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em">${titulo}</span>${conhecidos.length ? `<b class="small">${esc(brl(tot))}</b>` : ''}</div>
-    <div class="list">${G.map(({ c, s }) => `<div class="it" data-editconta="${c.id}">${logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${donoTag(c.dono)} ${c.saldoRef ? 'em ' + dshort(c.saldoRef.data) : c.tipo === 'conta' ? '' : 'estimado'}</div></div><div class="val ${s != null && s < 0 ? 'neg' : ''}">${s == null ? '<span class="tag amb">informar</span>' : esc(brl(s))}</div></div>`).join('')}</div>`;
+    <div class="list">${G.map(x => linha(x) + L.filter(y => y.c.tipo === 'invest' && y.c.daConta === x.c.id).map(y => linha(y, true)).join('')).join('')}</div>`;
   };
-  return `<div class="card"><h2 style="margin-bottom:0">Saldo das contas</h2>${grupo(['conta'], 'Contas')}${grupo(['invest'], 'Investimentos e cofrinhos')}${grupo(['beneficio'], 'Benefícios')}</div>`;
+  const cards = S.contas.filter(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem)).map(c => {
+    const a = live().filter(t => t.conta === c.id && naFatura(t) && t.venc && !t.pagoEm && (t.aberto || t.venc >= today())).reduce((s, t) => s - t.valor, 0);
+    return { c, a };
+  }).filter(x => x.a > 0.004);
+  const blocoCartoes = cards.length ? `<div class="card"><div class="row between"><h2 style="margin:0">Cartões e crediários</h2><button class="btn sm" data-tab="dividas">Ver</button></div><p class="tiny" style="margin:4px 0 0">Compras a pagar. Não saem do saldo das contas até você pagar a fatura.</p>
+    <div class="list">${cards.map(({ c, a }) => `<div class="it" data-tab="dividas">${logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${donoTag(c.dono)} ${c.pagaPor && conta(c.pagaPor) ? 'paga pela conta ' + esc(conta(c.pagaPor).nome) : TIPOS_CONTA[c.tipo]}</div></div><div class="val">${esc(brl(a))}<div class="tiny">a pagar</div></div></div>`).join('')}</div></div>` : '';
+  return `<div class="card"><h2 style="margin-bottom:0">Saldo das contas</h2>${grupo(['conta'], 'Contas')}${grupo(['invest'], 'Investimentos e cofrinhos')}${grupo(['beneficio'], 'Benefícios')}</div>` + blocoCartoes;
 }
+
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-cat]'); if (c && V.tab === 'resumo') { V.fCat = c.dataset.cat || '(sem)'; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); }
   const r = e.target.closest('[data-revisar]'); if (r) { V.revisar = true; V.fCat = ''; V.tab = 'lanc'; render(); }
@@ -1241,6 +1269,12 @@ function rAno() {
   <div class="seg" style="margin-bottom:14px">${[['all', 'Família'], ['p1', pnome('p1')], ['p2', pnome('p2')]].map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-quem="${k}">${esc(n)}</button>`).join('')}</div>
   <div class="hero"><div class="lbl">Saldo do ano</div><div class="big">${esc(brl(ent - desp))}</div><div class="two"><div>Entradas<b>${esc(brl(ent))}</b></div><div style="text-align:right">Despesas<b>${esc(brl(desp))}</b></div></div>
   <div class="sep"><span>Média de despesas por mês</span><b style="font-size:15px">${esc(brl(desp / comDados))}</b></div></div>
+  ${(() => { const rend = D.L.filter(t => t.tipo === 'receita' && t.cat === 'Rendimentos'); const rc = rend.filter(t => (conta(t.conta) || {}).tipo === 'invest').reduce((a, t) => a + t.valor, 0), rcc = rend.reduce((a, t) => a + t.valor, 0) - rc;
+    const jur = -D.L.filter(t => t.tipo === 'despesa' && t.sub === 'Juros').reduce((a, t) => a + t.valor, 0);
+    return rcc + rc + jur > 0.004 ? `<div class="card"><h2>Rendimentos e juros</h2><div class="list">
+      <div class="it" style="cursor:default"><div class="ic" style="background:var(--accbg);color:var(--grn)">${ti('trending-up', 20)}</div><div class="mid"><div class="t">Rendimento das contas</div></div><div class="val pos">${esc(brl(rcc))}</div></div>
+      <div class="it" style="cursor:default"><div class="ic" style="background:var(--accbg);color:var(--grn)">${ti('pig', 20)}</div><div class="mid"><div class="t">Rendimento dos cofrinhos</div></div><div class="val pos">${esc(brl(rc))}</div></div>
+      <div class="it" style="cursor:default"><div class="ic" style="background:var(--redbg);color:var(--red)">${ti('alert-triangle', 20)}</div><div class="mid"><div class="t">Juros pagos</div><div class="s">Atrasos e tarifas de juros</div></div><div class="val neg">${esc(brl(jur))}</div></div></div></div>` : ''; })()}
   <button class="btn full" id="exp-ano" style="margin-bottom:14px">${ti('download', 18)} Exportar planilha do ano</button>
   <div class="card"><h2>Mês a mês</h2><div class="mbar" style="gap:4px">${D.porMes.map((t, i) => `<div class="c" data-irmes="${D.meses[i]}"><div class="bb" style="gap:2px"><i style="width:7px;height:${t.ent / mx * 86}px;background:var(--grn)"></i><i style="width:7px;height:${t.desp / mx * 86}px;background:var(--red)"></i></div><span class="ml">${MESC[i][0].toUpperCase()}</span></div>`).join('')}</div>
   <div class="row small muted" style="gap:14px;margin-top:6px"><span><span class="dot" style="display:inline-block;background:var(--grn)"></span> Entradas</span><span><span class="dot" style="display:inline-block;background:var(--red)"></span> Despesas</span></div></div>
@@ -1315,7 +1349,7 @@ function itemTx(t) {
   const titulo = t.nome || t.desc;
   const sub = t.tipo === 'despesa' || t.tipo === 'receita' || t.tipo === 'entdivida' ? (t.cat ? t.cat + (t.sub ? ' › ' + t.sub : '') : '<span class="tag amb">Sem categoria</span>') : '<span class="tag">' + esc(TIPOS[t.tipo]) + '</span>';
   const cor = t.tipo === 'receita' ? 'pos' : t.tipo === 'despesa' ? (t.valor < 0 ? '' : 'pos') : 'muted';
-  return `<div class="it" data-tx="${t.id}">${catIc(t.tipo, t.cat)}<div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(c.dono)} ${t.cat ? esc(t.cat + (t.sub ? ' › ' + t.sub : '')) : sub} · ${esc(c.nome || '')}${t.parc ? ' · parcela ' + t.parc : ''}${t.venc ? ' · vence ' + dshort(t.venc) : ''}</div></div><div class="val ${cor}">${esc(brl(t.valor))}</div></div>`;
+  return `<div class="it" data-tx="${t.id}">${catIc(t.tipo, t.cat)}<div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(c.dono)} ${t.cat ? esc(t.cat + (t.sub ? ' › ' + t.sub : '')) : sub} · ${esc(c.nome || '')}${t.parc ? ' · parcela ' + t.parc : ''}${t.venc ? ' · vence ' + dshort(t.venc) : ''}${t.pagoEm ? ' · paga ' + dshort(t.pagoEm) + (t.venc && t.pagoEm > t.venc ? ' (com atraso)' : '') : atrasada(t) ? ' · <b style="color:var(--red)">atrasada</b>' : ''}</div></div><div class="val ${cor}">${esc(brl(t.valor))}</div></div>`;
 }
 document.addEventListener('click', e => {
   const f = e.target.closest('[data-fx]');
@@ -1489,15 +1523,18 @@ async function lerArquivo(file) {
 }
 function adivinhaConta(res) {
   if (res.acctKey) { const c = S.contas.find(c => (c.chaves || []).includes(res.acctKey)); if (c) return c.id; }
-  const tipos = res.tipo === 'loja' ? ['loja'] : res.tipo === 'cartao' ? ['cartao', 'loja'] : ['conta'];
+  const tipos = res.tipo === 'loja' ? ['loja'] : res.tipo === 'cartao' ? ['cartao', 'loja'] : res.tipo === 'beneficio' ? ['beneficio'] : ['conta'];
   const cand = S.contas.filter(c => tipos.includes(c.tipo) && res.banco && P.norm(c.banco) === P.norm(res.banco));
   return (cand.find(c => c.dono === S.eu) || cand[0] || {}).id || '';
 }
 function montaPrevia(res, contaId, nomeArq) {
   const c = conta(contaId);
   const ids = new Set(S.tx.map(t => t.id));
+  const naLoja = c && (c.tipo === 'loja' || c.tipo === 'cartao') ? live().filter(t => t.conta === contaId && t.venc) : [];
+  const usados = new Set();
   const linhas = res.rows.map(r => {
     const id = contaId + '|' + r.fitid;
+    if (!ids.has(id) && r.venc && naLoja.length) { const ig = naLoja.find(t => !usados.has(t.id) && t.venc === r.venc && Math.abs(t.valor - r.valor) < 0.011); if (ig) { usados.add(ig.id); ids.add(id); r._igual = ig.id; } }
     const cl = P.classify(r, c, S.regras, S.pessoas);
     const cln = P.clean(r.desc);
     return { r, id, dup: ids.has(id), sel: !ids.has(id), tipo: cl.tipo, cat: cl.cat, sub: cl.sub, auto: cl.auto, espelho: cl.espelho, nome: cln.nome, meio: cln.meio, parc: cln.parc };
@@ -1551,6 +1588,8 @@ function rImportar() {
     <label class="l">Importar na conta</label><select class="f" id="imp-conta"><option value="">Escolha a conta…</option>${opContas}</select>
     ${I.res.generico ? `<div class="banner amb" style="margin:10px 0 0">Formato que eu ainda não conheço: confira os valores e as datas antes de importar.<button class="btn sm" id="imp-inv" style="margin-left:auto">Inverter sinais</button></div>` : ''}
     ${I.res.prazo ? `<div class="banner acc" style="margin:10px 0 0">Data da compra = vencimento − ${I.res.prazo} dias.</div>` : ''}
+    ${I.res.aviso ? `<div class="banner ${I.res.confira ? 'amb' : 'acc'}" style="margin:10px 0 0">${esc(I.res.aviso)}</div>` : ''}
+    ${I.res.formato === 'Imagem' && !I.res.aviso ? `<div class="banner amb" style="margin:10px 0 0">Lido de imagem: confira nomes e valores antes de importar.</div>` : ''}
     <div class="row wrap" style="gap:6px;margin-top:12px"><span class="tag acc">${novos.length} novos</span>${L.length - novos.length ? `<span class="tag">${L.length - novos.length} já importados</span>` : ''}${rev.length ? `<span class="tag amb">${rev.length} sem categoria</span>` : ''}</div>
   </div>
   <div class="card" style="padding:6px 14px">${L.map((l, i) => {
@@ -1558,7 +1597,7 @@ function rImportar() {
     return `<div class="prow ${l.dup ? 'dup' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><input type="checkbox" class="chk" data-isel="${i}" ${l.sel ? 'checked' : ''} ${l.dup ? 'disabled' : ''} style="margin-top:2px">
       <div style="flex:1;min-width:0"><div class="row between" style="gap:8px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px"><span style="color:${ci.cor};display:inline-flex">${ti(ci.i || ICON_CAT[l.cat] || ({ transf: 'arrows-exchange', pagdivida: 'credit-card-pay', neutro: 'player-pause' })[l.tipo] || (l.tipo === 'receita' ? 'coin' : 'help-circle'), 17)}</span>${esc(l.nome)}</b><b class="${l.r.valor > 0 ? 'pos' : ''}" style="white-space:nowrap">${esc(brl(l.r.valor))}</b></div>
       <div class="tiny">${dshort(l.r.data)}${l.meio ? ' · ' + esc(l.meio) : ''}${l.r.venc ? ' · vence ' + dshort(l.r.venc) : ''}${l.dup ? ' · já importado' : ''}${l.auto === 'casal' ? ' · entre vocês' : ''}${l.auto === 'devol' ? ' · Pix devolvido' : ''}${l.auto === 'estorno' ? ' · estornado' : ''}${l.auto === 'limite' ? ' · limite do cartão' : ''}${l.parc ? ' · parcela ' + l.parc : ''}${l.confira ? ' · <b style="color:var(--amb)">confira o que foi</b>' : ''}${l.espelho === 'invest' ? ' · vai para o investimento' : ''}</div>
-      ${l.dup ? '' : `<select class="f" data-icls="${i}">${opcoesClass(classVal(l))}</select>`}</div></div></div>`; }).join('')}</div>
+      ${l.dup ? '' : `<div class="row" style="gap:6px"><select class="f" data-icls="${i}" style="flex:1">${opcoesClass(classVal(l))}</select>${I.res.formato === 'Imagem' ? `<button class="btn sm" data-iedit="${i}" style="margin-top:6px">Corrigir</button>` : ''}</div>`}</div></div></div>`; }).join('')}</div>
   <div style="position:sticky;bottom:calc(env(safe-area-inset-bottom) + 66px);display:grid;grid-template-columns:1fr 2fr;gap:10px;padding:10px 0;margin:0 -16px;padding-left:16px;padding-right:16px;background:linear-gradient(to top,var(--bg) 75%,transparent)">
     <button class="btn" id="imp-cancel" style="background:var(--card);box-shadow:var(--sh)">Cancelar</button><button class="btn pri" id="imp-ok">Importar ${sel.length}</button></div>`;
   $('#app').innerHTML = h;
@@ -1566,6 +1605,14 @@ function rImportar() {
   if ($('#imp-inv')) $('#imp-inv').onclick = () => { I.res.rows.forEach(r => r.valor = -r.valor); V.imp = montaPrevia(I.res, I.contaId, I.nomeArq); rImportar(); };
   $('#imp-cancel').onclick = () => { V.imp = null; V.fila = []; rImportar(); };
   $('#imp-ok').onclick = confirmaImport;
+  document.querySelectorAll('[data-iedit]').forEach(x => x.onclick = () => {
+    const l = L[+x.dataset.iedit];
+    const s = sheet(`<h2>Corrigir o que foi lido</h2><label class="l">Descrição</label><input class="f" id="ie-n" value="${esc(l.nome)}">
+      <div class="grid2"><div><label class="l">Valor (R$)</label><input class="f" id="ie-v" inputmode="decimal" value="${String(Math.abs(l.r.valor).toFixed(2)).replace('.', ',')}"></div><div><label class="l">Data</label><input class="f" id="ie-d" type="date" value="${l.r.data || today()}"></div></div>
+      <div class="grid2" style="margin-top:14px"><button class="btn" data-fechar>Cancelar</button><button class="btn pri" id="ie-ok">Salvar</button></div>`);
+    s.querySelector('#ie-ok').onclick = () => { const v = P.money(s.querySelector('#ie-v').value); if (isNaN(v) || !v) { toast('Valor inválido'); return; }
+      l.nome = s.querySelector('#ie-n').value.trim() || l.nome; l.r.desc = l.nome; l.r.valor = Math.sign(l.r.valor || -1) * Math.abs(v); l.r.data = s.querySelector('#ie-d').value || l.r.data; if (l.r.venc && I.res.prazo) l.r.venc = P.addDays(l.r.data, I.res.prazo); s.remove(); rImportar(); };
+  });
   document.querySelectorAll('[data-isel]').forEach(x => x.onchange = () => { L[+x.dataset.isel].sel = x.checked; $('#imp-ok').textContent = 'Importar ' + L.filter(l => l.sel).length; });
   document.querySelectorAll('[data-icls]').forEach(x => x.onchange = () => {
     const l = L[+x.dataset.icls]; const v = x.value; const antes = classVal(l);
@@ -1584,23 +1631,33 @@ function confirmaImport() {
   if (!c) { toast('Escolha a conta primeiro'); $('#imp-conta').focus(); return; }
   let n = 0, criouInv = ''; const agora = Date.now();
   for (const l of I.linhas) {
-    if (!l.sel || l.dup) continue;
+    // já importado: só atualiza a situação (paga / em aberto)
+    if (l.dup) { const ex = S.tx.find(x => x.id === (l.r._igual || l.id)); if (ex && l.r.pagoEm && ex.pagoEm !== l.r.pagoEm) { ex.pagoEm = l.r.pagoEm; delete ex.aberto; ex.upd = agora; } if (ex && l.r.aberto && !ex.pagoEm && !ex.aberto) { ex.aberto = true; ex.upd = agora; } continue; }
+    if (!l.sel) continue;
     const t = { id: l.id, conta: c.id, data: l.r.data, desc: l.r.desc, nome: l.nome, meio: l.meio, parc: l.parc || undefined, valor: Math.round(l.r.valor * 100) / 100, tipo: l.tipo, cat: l.cat, sub: l.sub, criado: agora, upd: agora };
+    if (l.r.pagoEm) t.pagoEm = l.r.pagoEm; else if (l.r.aberto) t.aberto = true;
     if (c.tipo === 'cartao' || c.tipo === 'loja') t.venc = l.r.venc || vencCartao(c, t.data) || undefined;
     if (l.auto === 'manual') t.travado = true;
     S.tx.push(t); n++;
     if (l.parTx) { const o = S.tx.find(x => x.id === l.parTx); if (o && !o.travado) Object.assign(o, { tipo: 'neutro', cat: '', sub: '', upd: agora }); }
     if (l.espelho === 'invest' && t.tipo === 'transf' && c.tipo !== 'invest') {
       // dinheiro que vai para o cofrinho/caixinha aparece também na conta de investimento
-      let inv = S.contas.find(x => x.tipo === 'invest' && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco)) || S.contas.find(x => x.tipo === 'invest' && x.dono === c.dono);
-      if (!inv) { inv = { id: 'inv-' + uid(), nome: 'Cofrinho ' + (c.banco || c.nome), dono: c.dono, tipo: 'invest', banco: c.banco || c.nome, chaves: [], saldoIni: 0, upd: agora }; S.contas.push(inv); criouInv = inv.nome; }
+      const nmC = (t.desc || '').replace(/^.*?(dinheiro\s+(reservado|retirado|guardado|resgatado)|aplica[çc][ãa]o|resgate)\s*(rdb)?\s*/i, '').replace(/\s+\d{6,}.*$/, '').trim();
+      const nomeInv = nmC && nmC.length > 2 ? nmC : 'Cofrinho ' + (c.banco || c.nome);
+      const daConta = S.contas.filter(x => x.tipo === 'invest' && (x.daConta === c.id || (!x.daConta && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco))));
+      let inv = daConta.find(x => P.norm(x.nome) === P.norm(nomeInv)) || daConta.find(x => /^COFRINHO (MERCADO PAGO|NUBANK|INTER|SICREDI)$/.test(P.norm(x.nome)) && !live().some(y => y.conta === x.id));
+      if (inv && P.norm(inv.nome) !== P.norm(nomeInv) && nmC) { inv.nome = nomeInv; inv.upd = agora; }
+      if (!inv) { inv = { id: 'inv-' + uid(), nome: nomeInv, dono: c.dono, tipo: 'invest', banco: c.banco || c.nome, daConta: c.id, chaves: [], saldoIni: 0, upd: agora }; S.contas.push(inv); criouInv = inv.nome; }
+      if (!inv.daConta) inv.daConta = c.id;
       if (!S.tx.some(x => x.id === 'esp|' + t.id)) S.tx.push({ id: 'esp|' + t.id, conta: inv.id, data: t.data, desc: (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ') + c.nome, nome: (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ') + c.nome, valor: -t.valor, tipo: 'transf', cat: 'Investimento', sub: '', criado: agora, upd: agora });
+      t.cofre = inv.id;
     }
     if (l.espelho === 'beneficio') {
       const b = S.contas.find(x => x.tipo === 'beneficio' && x.dono === c.dono);
       if (b && !S.tx.some(x => x.id === 'esp|' + t.id)) S.tx.push({ id: 'esp|' + t.id, conta: b.id, data: t.data, desc: 'Passado na maquininha → ' + c.nome, nome: 'Passado na maquininha → ' + c.nome, valor: -Math.abs(t.valor), tipo: 'transf', cat: '', sub: '', criado: agora, upd: agora });
     }
   }
+  conciliaFaturas();
   if (I.res.acctKey && !(c.chaves || []).includes(I.res.acctKey)) { S.contas.forEach(x => x.chaves = (x.chaves || []).filter(k => k !== I.res.acctKey)); (c.chaves = c.chaves || []).push(I.res.acctKey); }
   baixaContratos();
   // saldo informado no extrato (OFX, CSV ou PDF)
@@ -1616,6 +1673,54 @@ function confirmaImport() {
   if (V.fila && V.fila.length) return proximoDaFila();
   if (meses.length) V.mes = meses[meses.length - 1];
   V.tab = 'resumo'; render(); window.scrollTo(0, 0);
+}
+// ---- pagamento de fatura: liga o pagamento ao cartão e confere com as compras
+const fimMes = d => { const [y, m] = d.split('-').map(Number); return P.iso(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1) > d ? P.addDays(P.iso(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1), -1) : d; };
+function cartaoDoPagamento(t) {
+  const c0 = conta(t.conta); if (!c0 || c0.tipo !== 'conta') return null;
+  const N = P.norm((t.desc || '') + ' ' + (t.nome || ''));
+  const porNome = S.contas.find(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (c.pagChaves || []).some(k => k && N.includes(P.norm(k))));
+  if (porNome) return porNome;
+  if (/PAGAMENTO (DE )?FATURA/.test(N)) return S.contas.find(c => c.tipo === 'cartao' && c.pagaPor === t.conta) || null;
+  return null;
+}
+function conciliaFaturas() {
+  const agora = Date.now(); let mudou = false;
+  const pags = live().filter(t => t.valor < 0 && !t.contrato && (t.tipo === 'pagdivida' || t.cartao)).sort((a, b) => a.data.localeCompare(b.data));
+  for (const t of pags) { const c = cartaoDoPagamento(t); const id = c ? c.id : undefined;
+    if (t.cartao !== id) { t.cartao = id; if (c && !t.travado) { t.tipo = 'pagdivida'; t.cat = ''; t.sub = ''; } t.upd = agora; mudou = true; } }
+  // só cartões em que cada compra tem o seu vencimento (BônusCred)
+  for (const c of S.contas.filter(c => c.prazo)) {
+    const itens = live().filter(t => t.conta === c.id && t.valor < 0 && t.venc && !t.juros);
+    for (const t of itens) if (t.pagoPor) { delete t.pagoPor; delete t.pagoEm; t.aberto = true; t._r = 1; }
+    for (const pg of live().filter(t => t.cartao === c.id && t.valor < 0).sort((a, b) => a.data.localeCompare(b.data))) {
+      const D = pg.data, A = -pg.valor;
+      const doPrint = itens.filter(t => t.pagoEm && !t.pagoPor && t.pagoEm >= P.addDays(D, -3) && t.pagoEm <= P.addDays(D, 3));
+      // sem fechamento: o pagamento quita as compras em aberto pela ordem do vencimento (cada uma vence 30 dias após a compra)
+      const abertas = itens.filter(t => !t.pagoEm && t.data <= D).sort((a, b) => a.venc.localeCompare(b.venc) || a.data.localeCompare(b.data));
+      let soma = doPrint.reduce((a, t) => a - t.valor, 0); const baixa = [];
+      // pagamento de fatura que veio paga no print: não mexe nas compras em aberto
+      if (!doPrint.length) for (const t of abertas) { if (soma - t.valor > A + 0.01) break; soma -= t.valor; baixa.push(t); }
+      for (const t of baixa) { t.pagoEm = D; t.pagoPor = pg.id; delete t.aberto; }
+      const dif = Math.round((A - soma) * 100) / 100, jid = c.id + '|juros|' + pg.id, ex = S.tx.find(x => x.id === jid);
+      const todas = abertas.length === baixa.length, venceu = baixa.some(t => t.venc < D);
+      // compras do PDF de pendentes: diferença = juros. Compras lidas de print: pode ser compra que não saiu no print
+      const soPrint = !!doPrint.length;
+      // fatura que já veio paga no print está certa: só liga o pagamento, sem diferença
+      pg.fatura = soPrint ? { compras: Math.round(soma * 100) / 100, paga: true } : { compras: Math.round(soma * 100) / 100, dif: todas ? dif : 0, falta: todas ? 0 : abertas.filter(t => !baixa.includes(t)).reduce((a, t) => a - t.valor, 0) };
+      if (!soPrint && todas && dif > 0.01 && baixa.length) {
+        // pagou mais que as compras: com compra vencida é juros; sem nada vencido, fica para você conferir
+        const nj = venceu ? { desc: 'Juros por atraso ' + c.nome, nome: 'Juros por atraso', cat: 'Banco', sub: 'Juros' } : { desc: 'Diferença no pagamento ' + c.nome, nome: 'Pagou a mais que as compras', cat: '', sub: '' };
+        if (!pg.fatura.paga) pg.fatura.juros = venceu;
+        if (!ex) { S.tx.push(Object.assign({ id: jid, conta: c.id, data: D, valor: -dif, tipo: 'despesa', juros: pg.id, criado: agora, upd: agora }, nj)); mudou = true; }
+        else if (!ex.travado && (ex.del || Math.abs(ex.valor + dif) > 0.004 || ex.desc !== nj.desc)) { Object.assign(ex, nj, { valor: -dif }); delete ex.del; ex.upd = agora; mudou = true; }
+      } else if (ex && !ex.del && !ex.travado) { ex.del = true; ex.upd = agora; mudou = true; }
+    }
+    const vivos = new Set(live().filter(t => t.cartao === c.id).map(t => t.id));
+    for (const j of live().filter(t => t.conta === c.id && t.juros && !vivos.has(t.juros) && !t.travado)) { j.del = true; j.upd = agora; mudou = true; }
+    for (const t of itens) { if (t._r && !(t.pagoPor)) { /* voltou a ficar em aberto */ } if (t._r) { delete t._r; t.upd = agora; mudou = true; } else if (t.pagoPor) { t.upd = agora; mudou = true; } }
+  }
+  return mudou;
 }
 // ---- contratos de crédito (PDF do Mercado Pago e do Nubank)
 function achaDono(nome) {
@@ -1684,12 +1789,143 @@ function previaContrato(d, nomeArq) {
 // ---- leitura de print (Shopee e outras faturas sem arquivo): o texto da imagem vira lançamentos para conferir
 let ocrPronto = null;
 function ocr() { if (!ocrPronto) ocrPronto = carregaScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js').then(() => window.Tesseract); return ocrPronto; }
+async function prepImagem(file) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.max(1, Math.min(3.2, 2400 / bmp.width)), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, w, h);
+  const im = g.getImageData(0, 0, w, h), d = im.data; let mn = 255, mx = 0;
+  for (let i = 0; i < d.length; i += 4) { const y = d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114; d[i] = y; if (y < mn) mn = y; if (y > mx) mx = y; }
+  const esc = 255 / Math.max(1, mx - mn);
+  for (let i = 0; i < d.length; i += 4) { const y = (d[i] - mn) * esc; d[i] = d[i + 1] = d[i + 2] = y; }
+  g.putImageData(im, 0, 0); return cv;
+}
+let ocrWorker = null;
 async function lerPrint(file, aviso) {
   const T = await ocr();
-  const w = await T.createWorker('por', 1, { logger: m => { if (m.status === 'recognizing text' && aviso) aviso(Math.round(m.progress * 100)); } });
-  try { const { data } = await w.recognize(file); return data.text || ''; } finally { w.terminate(); }
+  if (!ocrWorker) { ocrWorker = await T.createWorker('por', 1, { logger: m => { if (m.status === 'recognizing text' && window.__ocrAviso) window.__ocrAviso(Math.round(m.progress * 100)); } }); await ocrWorker.setParameters({ preserve_interword_spaces: '1' }); }
+  window.__ocrAviso = aviso;
+  const { data } = await ocrWorker.recognize(await prepImagem(file)); return data.text || '';
 }
+const ehImagem = f => /\.(png|jpe?g|webp|heic|heif)$/i.test(f.name || '') || /^image\//.test(f.type || '');
+// lê todos os prints antes, para juntar os da mesma fatura (Shopee) e não duplicar
+async function preparaPrints(files) {
+  const imgs = files.filter(ehImagem); if (!imgs.length) return files;
+  const lidos = [];
+  for (let i = 0; i < imgs.length; i++) {
+    $('#app').innerHTML = cabecalho('Importar', false, false) + `<div class="card empty"><div class="e">⏳</div>Lendo o print ${i + 1} de ${imgs.length}: <b id="ocr-prog">0%</b><br><span class="small">Na primeira vez demora mais, porque o app baixa o leitor de imagens.</span></div>`;
+    try { const txt = await lerPrint(imgs[i], p => { const x = document.querySelector('#ocr-prog'); if (x) x.textContent = p + '%'; }); lidos.push({ name: imgs[i].name, res: P.parsePrint(txt, new Date().getFullYear(), imgs[i].name) }); }
+    catch (e) { toast('Não consegui ler ' + imgs[i].name); }
+  }
+  const sh = lidos.filter(x => x.res.shopee), outros = lidos.filter(x => !x.res.shopee);
+  const juntos = sh.length ? P.juntaShopee(sh.map(x => x.res)).map((res, i) => ({ name: 'Fatura Shopee' + (res.rows[0] ? ' até ' + dshort(res.rows[0].data) : ''), res })) : [];
+  // prints do mesmo lugar (Caju, BônusCred): junta numa importação só
+  const grupos = new Map(); for (const x of outros) { const k = x.res.banco + '|' + x.res.tipo; if (!grupos.has(k)) grupos.set(k, { name: x.name, res: Object.assign({}, x.res, { rows: [] }), n: 0 }); const g = grupos.get(k); g.n++; const ids = new Set(g.res.rows.map(r => r.fitid)); for (const r of x.res.rows) if (!ids.has(r.fitid)) g.res.rows.push(r); }
+  const prontos = [...juntos, ...[...grupos.values()].map(g => ({ name: g.n > 1 ? g.n + ' prints · ' + (g.res.banco || 'imagem') : g.name, res: g.res }))];
+  return [...files.filter(f => !ehImagem(f)), ...prontos];
+}
+// valores lidos de imagem: a vírgula às vezes some ("R$4561" = 45,61)
+P.moneyOCR = function (s) {
+  const m = String(s).replace(/\s+/g, '').match(/(-?)R?[\$S5]?(-?)(\d[\d.]*)(?:[,:](\d{1,2}))?/); if (!m) return null;
+  const neg = !!(m[1] || m[2]);
+  if (m[4] != null) return { v: P.money(m[3] + ',' + m[4]) * (neg ? -1 : 1), certo: true };
+  const dg = m[3].replace(/\D/g, ''); const pm = m[3].match(/^(\d+)\.(\d{2})$/);
+  if (pm) return { v: +(pm[1] + '.' + pm[2]) * (neg ? -1 : 1), certo: true };
+  return { raw: dg, neg, certo: false, v: (dg.length > 2 ? +dg / 100 : +dg) * (neg ? -1 : 1) };
+};
+const MESES_LONGOS = { JANEIRO: 1, FEVEREIRO: 2, MARCO: 3, ABRIL: 4, MAIO: 5, JUNHO: 6, JULHO: 7, AGOSTO: 8, SETEMBRO: 9, OUTUBRO: 10, NOVEMBRO: 11, DEZEMBRO: 12 };
+const anoPara = (mo, refYear) => { const hoje = new Date(); return mo > hoje.getMonth() + 2 && refYear === hoje.getFullYear() ? refYear - 1 : refYear; };
+const RS = /-?\s*R\s?[\$S5]\s*-?\s*\d[\d.]*(?:[,:]\s?\d{1,2})?/;
+P.parsePrintCaju = function (L, refYear) {
+  const rows = [], seen = {}; let data = null;
+  for (let i = 0; i < L.length; i++) {
+    const N = P.norm(L[i]);
+    const md = N.match(/(\d{1,2})\s*DE\s*([A-Z]{4,9})/); if (md && MESES_LONGOS[md[2]]) { data = P.iso(anoPara(MESES_LONGOS[md[2]], refYear), MESES_LONGOS[md[2]], +md[1]); continue; }
+    const mm = L[i].match(RS); if (!mm || !data) continue;
+    const mv = P.moneyOCR(mm[0]); if (!mv || !mv.v) continue;
+    const credito = /CAIU\s*SALDO|SALDO\s*CAJU/.test(N.replace(/CAIUSALDO/, 'CAIU SALDO'));
+    let nome = '';
+    if (!credito) for (const j of [i, i - 1, i + 1]) { const x = (L[j] || '').replace(RS, '').replace(/\.{2,}.*$/, '').replace(/^[^A-Za-zÀ-ú]*(?:\S{1,2}\s+)*/, '').trim(); if (x && !/PIX|ENVIADO|CAIU|SALDO|DE\s+[A-Z]+$/i.test(P.norm(x)) && x.length > 3) { nome = x; break; } }
+    const valor = Math.abs(mv.v) * (credito ? 1 : -1);
+    const desc = credito ? 'Caiu saldo Caju' : 'Pix enviado - ' + (nome || 'Pix');
+    const k = data + '|' + (credito ? 'c' : 'd') + '|' + Math.round(Math.abs(valor) * 100); seen[k] = (seen[k] || 0) + 1;
+    rows.push({ data, valor, desc, fitid: 'cj:' + k + '|' + seen[k] });
+  }
+  return { formato: 'Imagem', banco: 'Caju', tipo: 'beneficio', rows };
+};
+P.parsePrintShopee = function (L, refYear) {
+  const T = P.norm(L.join('\n')).replace(/\bO(\d)/g, '0$1');
+  const mp = T.match(/(\d{1,2})\s*(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\w*\s*-\s*(\d{1,2})\s*(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)/);
+  let fim = null; if (mp) { const mo = MESES[mp[4]]; fim = P.iso(anoPara(mo, refYear), mo, +mp[3]); }
+  const linhaV = re => { const l = L.find(x => re.test(P.norm(x))); const m = l && l.match(RS); return m ? P.moneyOCR(m[0]) : null; };
+  const total = linhaV(/VALOR DA FATURA/), desc = linhaV(/VALOR DESCONTADO/);
+  const itens = [];
+  for (let i = 0; i < L.length; i++) {
+    const N = P.norm(L[i]); if (/VALOR|TOTAL DE|REEMBOLS|PAGO|FATURA/.test(N)) continue;
+    const m = L[i].match(/R\s?[\$S5]\s*\d[\d.]*(?:[,:]\s?\d{1,2})?/); if (!m) continue;
+    const mv = P.moneyOCR(m[0]); if (!mv) continue;
+    let d = L[i].slice(0, m.index).replace(/[+>]\s*$/, '').replace(/\.{2,}\s*$/, '').replace(/^\S{1,3}\s+/, '').trim();
+    const pc = ((L[i + 1] || '') + ' ' + (L[i + 2] || '')).match(/\[\s*(\d{1,2})\s*\/\s*(\d{1,2})\s*\]/);
+    itens.push({ desc: d, mv, parc: pc ? +pc[1] + '/' + +pc[2] : '' });
+  }
+  return { formato: 'Imagem', banco: 'Shopee', tipo: 'loja', shopee: { fim, total: total && total.v, desconto: desc && Math.abs(desc.v), itens }, rows: [] };
+};
+// junta prints da mesma fatura Shopee e descobre as vírgulas pela soma do "Valor da fatura"
+P.juntaShopee = function (lista) {
+  const cents = it => it.mv.certo ? Math.round(Math.abs(it.mv.v) * 100) : null;
+  const chaveD = x => P.norm(x.desc).replace(/[^A-Z]/g, '').slice(0, 14);
+  const mesmo = (a, b) => (a.parc && a.parc === b.parc && chaveD(a).length >= 10 && chaveD(a) === chaveD(b)) || (!a.parc || !b.parc || a.parc === b.parc) && (a.mv.raw && b.mv.raw ? a.mv.raw === b.mv.raw : a.mv.raw ? +a.mv.raw === cents(b) || Math.round(+a.mv.raw * 10) === cents(b) : b.mv.raw ? +b.mv.raw === cents(a) || Math.round(+b.mv.raw * 10) === cents(a) : cents(a) === cents(b));
+  const grupos = lista.map(r => ({ fim: r.shopee.fim, total: r.shopee.total, desconto: r.shopee.desconto, itens: r.shopee.itens.map(x => Object.assign({}, x)) }));
+  const junta = (g, h) => { g.total = g.total || h.total; g.desconto = g.desconto || h.desconto; g.fim = g.fim || h.fim;
+    for (const it of h.itens) { const ja = g.itens.find(x => mesmo(x, it)); if (ja) { if (it.mv.certo && !ja.mv.certo) ja.mv = it.mv; if (!ja.parc && it.parc) ja.parc = it.parc; if (it.desc.length > ja.desc.length) ja.desc = it.desc; } else g.itens.push(it); } };
+  // primeiro os prints da mesma fatura (mesmo período), depois os sem cabeçalho no grupo com que têm compras em comum
+  const com = [], sem = [];
+  for (const g of grupos) { if (!g.fim) { sem.push(g); continue; } const a = com.find(x => x.fim === g.fim); if (a) junta(a, g); else com.push(g); }
+  for (const g of sem) { let alvo = null, best = 0; for (const a of com) { const n = g.itens.filter(it => a.itens.some(x => mesmo(x, it))).length; if (n > best) { best = n; alvo = a; } } if (alvo) junta(alvo, g); else com.push(g); }
+  const out = [];
+  for (const g of com) {
+    // dentro do grupo, tira repetidos que sobraram
+    const its = []; for (const it of g.itens) { const ja = its.find(x => mesmo(x, it)); if (ja) { if (it.mv.certo && !ja.mv.certo) ja.mv = it.mv; if (!ja.parc && it.parc) ja.parc = it.parc; } else its.push(it); } g.itens = its;
+    const inc = g.itens.filter(x => !x.mv.certo && x.mv.raw.length >= 2), fixo = g.itens.filter(x => !inc.includes(x)).reduce((a, x) => a + Math.abs(x.mv.v), 0);
+    let bateu = false, falta = null;
+    if (g.total && inc.length <= 14) {
+      let melhor = null;
+      for (let m = 0; m < (1 << inc.length); m++) {
+        let s = fixo; inc.forEach((x, i) => s += +x.mv.raw / ((m >> i) & 1 ? 10 : 100));
+        if (Math.abs(s - g.total) < 0.006) { melhor = { m, s }; bateu = true; break; }
+        if (s <= g.total + 0.005 && (!melhor || s > melhor.s)) melhor = { m, s };
+      }
+      if (melhor) { inc.forEach((x, i) => x.mv = { v: +x.mv.raw / ((melhor.m >> i) & 1 ? 10 : 100), certo: true }); if (!bateu) falta = g.total - melhor.s; }
+      else { const s = g.itens.reduce((a, x) => a + (x.mv.certo ? Math.abs(x.mv.v) : +x.mv.raw / 100), 0); falta = g.total - s; }
+    }
+    const fimDt = g.fim || null;
+    const rows = g.itens.map(x => { const v = Math.abs(x.mv.v); return { data: fimDt, valor: -v, desc: (x.desc || 'Compra Shopee') + (x.parc ? ' ' + x.parc : ''), fitid: 'sh:' + fimDt + '|' + x.parc + '|' + Math.round(v * 100) }; });
+    if (falta > 0.009) rows.push({ data: fimDt, valor: -Math.round(falta * 100) / 100, desc: 'Compra Shopee não lida no print', fitid: 'sh:' + fimDt + '|falta|' + Math.round(falta * 100) });
+    if (g.desconto) rows.push({ data: fimDt, valor: g.desconto, desc: 'Desconto na fatura Shopee', fitid: 'sh:' + fimDt + '|desconto' });
+    out.push({ formato: 'Imagem', banco: 'Shopee', tipo: 'loja', rows, confira: !bateu,
+      aviso: bateu ? `Valores conferidos: a soma bate com o total da fatura (${BRL.format(g.total)}).` : falta > 0.009 ? `Uma compra de ${BRL.format(falta)} não deu para ler no print (o total da fatura é ${BRL.format(g.total)}). Coloquei como "Compra Shopee não lida": toque em Corrigir para dar o nome.` : falta < -0.009 ? `A soma ficou ${BRL.format(-falta)} acima do total da fatura (${BRL.format(g.total)}): algum valor foi lido errado. Confira e corrija.` : !fimDt ? 'Não achei o período da fatura no print: confira as datas.' : 'Não consegui conferir com o total da fatura: confira os valores.' });
+  }
+  return out;
+};
+P.parsePrintBonus = function (L) {
+  const rows = [], seen = {};
+  const nomeDe = s => { const N = P.norm(s); return /METEOR|MERCAD|VENTAN|VENTA\b|MENTA|SUPERM|ERMERC/.test(N) ? 'METEORO SUPERMERCADOS VENTANIA' : /RECARGA|CELU|\bTIM\b/.test(N) ? 'RECARGA DE CELULAR TIM' : /BONUS|SORTE|PREMIO/.test(N) ? 'BONUS DA SORTE - PREMIOS' : ''; };
+  for (let i = 0; i < L.length; i++) {
+    const ds = [...L[i].matchAll(/(\d{2})\/(\d{2})\/(20\d{2})/g)].map(m => P.date(m[0])).filter(Boolean); if (!ds.length) continue;
+    const mm = L[i].match(/R\s?[\$S5]\s*\d[\d.]*(?:[,:]\s?\d{2})?/); if (!mm) continue;
+    let mv = P.moneyOCR(mm[0]); if (!mv) continue; const v = mv.certo ? Math.abs(mv.v) : +mv.raw / 100; if (!v) continue;
+    const venc = ds[0], pago = ds[1];
+    const nome = nomeDe(L[i].slice(0, L[i].search(/\d{2}\/\d{2}\/20\d{2}/))) || nomeDe(L[i - 1] || '') || 'Compra BônusCred';
+    const k = venc + '|' + Math.round(v * 100); seen[k] = (seen[k] || 0) + 1;
+    rows.push({ data: P.addDays(venc, -30), venc, valor: -v, desc: nome, pagoEm: pago || undefined, fitid: 'bcp:' + k + '|' + seen[k] });
+  }
+  return { formato: 'Imagem', banco: 'BônusCred', tipo: 'loja', prazo: 30, rows };
+};
 P.parsePrint = function (texto, refYear, nomeArq) {
+  const LL = texto.split(/\n/).map(s => s.replace(/[|]/g, ' ').trim()).filter(Boolean);
+  const TT = P.norm(texto + ' ' + (nomeArq || ''));
+  if (/EXTRATO SALDO CAJU|CAIU ?SALDO/.test(TT)) return P.parsePrintCaju(LL, refYear);
+  if (/DETALHES DA FATURA/.test(TT) && /TRANSA|PARCELADO|\[\d\/\d\]/.test(TT) || /SHOPEE/.test(TT) && /PARCELADO/.test(TT)) return P.parsePrintShopee(LL, refYear);
+  if (/BONUS ?CRED|EXTRATO DE COMPRAS|PAGO EM/.test(TT) && /VENCIMENTO/.test(TT)) return P.parsePrintBonus(LL);
   const linhas = texto.split(/\n/).map(s => s.replace(/[|]/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
   const T = P.norm(texto + ' ' + (nomeArq || ''));
   const MONEY = /-?\s*R\$\s*-?\s*\d{1,3}(?:\.\d{3})*,\d{2}|-?\d{1,3}(?:\.\d{3})*,\d{2}/g;
@@ -1716,6 +1952,7 @@ P.parsePrint = function (texto, refYear, nomeArq) {
 async function proximoDaFila() {
   const f = V.fila.shift(); if (!f) return;
   V.tab = 'importar';
+  if (f.res) { for (const r of f.res.rows) if (!r.data) r.data = today(); if (!f.res.rows.length) { toast('Não encontrei lançamentos em ' + f.name); return V.fila.length ? proximoDaFila() : rImportar(); } V.imp = montaPrevia(f.res, adivinhaConta(f.res), f.name); rImportar(); window.scrollTo(0, 0); return; }
   const img = /\.(png|jpe?g|webp|heic|heif)$/i.test(f.name) || /^image\//.test(f.type || '');
   $('#app').innerHTML = cabecalho('Importar', false, false) + `<div class="card empty"><div class="e">⏳</div>Lendo ${esc(f.name)}…${img ? '<br><span class="small">Lendo o texto da imagem: <b id="ocr-prog">0%</b>. Na primeira vez demora mais, porque baixa o leitor.</span>' : ''}</div>`; renderNav();
   try {
@@ -1742,10 +1979,17 @@ function mapearCSV(f, res) {
     V.imp = montaPrevia(r2, adivinhaConta(r2), f.name); rImportar();
   };
 }
-$('#fileIn').onchange = e => { V.fila = [...e.target.files]; e.target.value = ''; proximoDaFila(); };
+$('#fileIn').onchange = async e => { const fs = [...e.target.files]; e.target.value = ''; V.tab = 'importar'; renderNav(); V.fila = await preparaPrints(fs); proximoDaFila(); };
 
 // ================= DÍVIDAS =================
 const TIPOS_CONTRATO = { casa: 'Financiamento da casa', vendedor: 'Parcela do vendedor', emprestimo: 'Empréstimo', fgts: 'Saque-aniversário FGTS', outro: 'Outro' };
+function pagInfo(c) {
+  const pg = live().filter(t => t.cartao === c.id).sort((a, b) => b.data.localeCompare(a.data))[0];
+  const pp = c.pagaPor && conta(c.pagaPor);
+  let h = pp ? `<div class="tiny" style="margin-top:8px">${ti('link', 14)} Ligado à conta ${esc(pp.nome)}</div>` : '';
+  if (pg) { const f = pg.fatura; h += `<div class="small" style="margin-top:8px">Último pagamento: <b>${esc(brl(-pg.valor))}</b> em ${dshort(pg.data)} pela conta ${esc((conta(pg.conta) || {}).nome || '')}${f && f.paga ? '' : f && f.dif > 0.01 ? ` · <b style="color:var(--red)">${esc(brl(f.dif))} ${f.juros ? 'de juros (tinha compra vencida)' : 'a mais que as compras: confira'}</b>` : f && f.falta > 0.01 ? ` · <span class="muted">quitou ${esc(brl(f.compras))} em compras; o resto continua em aberto</span>` : f && f.falta > 0.01 ? ` · <b style="color:var(--amb)">faltou ${esc(brl(f.falta))}</b>` : f ? ' · <span style="color:var(--grn)">bateu com as compras</span>' : ''}</div>`; }
+  return h;
+}
 function rDividas() {
   const hoje = today();
   const contas = S.contas.filter(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem));
@@ -1753,11 +1997,12 @@ function rDividas() {
   const blocos = contas.map(c => {
     const itens = live().filter(t => t.conta === c.id && naFatura(t));
     const semVenc = itens.filter(t => !t.venc).length;
-    const futuros = itens.filter(t => t.venc && t.venc >= hoje);
+    const atrs = itens.filter(atrasada);
+    const futuros = itens.filter(t => t.venc && t.venc >= hoje && !t.pagoEm).concat(atrs);
     const porMes = {}; for (const t of futuros) { const k = mkey(t.venc); porMes[k] = (porMes[k] || 0) - t.valor; }
     const tot = futuros.reduce((a, t) => a - t.valor, 0); totalAberto += tot;
     const prox = futuros.sort((a, b) => a.venc.localeCompare(b.venc))[0];
-    return { c, tot, porMes, prox, semVenc, n: itens.length };
+    return { c, tot, porMes, prox, semVenc, n: itens.length, atr: atrs.reduce((a, t) => a - t.valor, 0), nAtr: atrs.length };
   }).filter(b => b.n || b.c.tipo === 'cartao');
   const ct = S.contratos.filter(c => V.quem === 'all' || c.dono === V.quem);
   const restoContr = ct.filter(c => c.tipo !== 'fgts').reduce((a, c) => a + restoContrato(c), 0);
@@ -1770,6 +2015,8 @@ function rDividas() {
   for (const b of blocos) {
     const meses = Object.entries(b.porMes).sort();
     h += `<div class="card" data-editconta="${b.c.id}" style="cursor:pointer"><div class="row between"><div class="row">${logoBanco(b.c)}<div><div style="font-weight:700">${esc(b.c.nome)}</div><div class="small muted">${donoTag(b.c.dono)} ${b.c.prazo ? 'Cada compra vence em ' + b.c.prazo + ' dias' : b.c.fech ? 'Fecha dia ' + b.c.fech + ' · vence dia ' + b.c.venc : '<span class="tag amb">Configurar fechamento</span>'}</div></div></div><div style="text-align:right"><div style="font-weight:700">${esc(brl(b.tot))}</div><div class="tiny">a vencer</div></div></div>
+    ${pagInfo(b.c)}
+    ${b.nAtr ? `<div class="banner red" style="margin:10px 0 0">${ti('alert-triangle', 18)} <span>${b.nAtr} compra(s) vencida(s) sem pagar: <b>${esc(brl(b.atr))}</b>. Atrasar cobra juros.</span></div>` : ''}
     ${b.prox ? `<div class="small" style="margin-top:10px">Próximo vencimento: <b>${dlabel(b.prox.venc)}</b></div>` : ''}
     ${meses.length ? `<div class="row wrap" style="gap:6px;margin-top:8px">${meses.map(([k, v]) => `<span class="tag">${MESC[+k.slice(5) - 1]}/${k.slice(2, 4)} · ${esc(brl0(v))}</span>`).join('')}</div>` : ''}
     ${b.semVenc ? `<div class="tiny" style="margin-top:8px">${b.semVenc} compra(s) sem vencimento. Toque para configurar o fechamento e o vencimento.</div>` : ''}</div>`;
@@ -1835,7 +2082,7 @@ function rAjustes() {
   </div>
   <div class="card"><h2>Este celular é de</h2><div class="seg">${S.pessoas.map(p => `<button class="${p.id === S.eu ? 'on' : ''}" data-souu="${p.id}">${esc(p.nome)}</button>`).join('')}</div></div>
   <div class="card"><div class="row between"><h2 style="margin:0">Contas e cartões</h2><button class="btn sm" id="nova-conta">${ic('plus', 'width="16" height="16"')} Nova</button></div>
-  ${S.pessoas.map(p => `<div class="dayh">${esc(p.nome)}</div><div class="list">${S.contas.filter(c => c.dono === p.id).map(c => itemConta(c)).join('')}</div>`).join('')}
+  ${S.pessoas.map(p => `<div class="dayh">${esc(p.nome)}</div>${listaContas(S.contas.filter(c => c.dono === p.id))}`).join('')}
   ${S.contas.some(c => c.dono === 'casa') ? `<div class="dayh">Casa</div><div class="list">${S.contas.filter(c => c.dono === 'casa').map(itemConta).join('')}</div>` : ''}</div>
   <div class="card"><h2>Categorias e orçamentos</h2><p class="small muted" style="margin-top:-4px">Toque para editar as subcategorias ou definir um limite por mês.</p><div class="list">${S.cats.despesa.map((c, i) => `<div class="it" data-ecat="${i}">${catIc('despesa', c.nome)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(c.subs.join(', ') || 'Sem subcategorias')}</div></div><div class="val small">${S.orc[c.nome] ? esc(brl0(S.orc[c.nome])) : '<span class="tiny">sem limite</span>'}</div></div>`).join('')}</div>
   <button class="btn full" id="nova-cat" style="margin-top:8px">${ic('plus', 'width="16" height="16"')} Nova categoria</button></div>
@@ -1861,8 +2108,15 @@ function rAjustes() {
   $('#mei').onchange = e => { S.meiChaves = e.target.value.split(',').map(x => x.trim()).filter(Boolean); P.meiChaves = S.meiChaves; S.cfgUpd = Object.assign(S.cfgUpd || {}, { mei: Date.now() }); save(false); toast('Salvo'); };
   document.querySelectorAll('[data-alias]').forEach(i => i.onchange = () => { pessoa(i.dataset.alias).aliases = i.value.split(',').map(x => x.trim()).filter(Boolean); S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
 }
-function itemConta(c) {
-  const sub = (TIPOS_CONTA[c.tipo] || '') + (c.tipo === 'cartao' && !c.fech ? ' · configurar fechamento' : '');
+function listaContas(L) {
+  const G = [['conta', 'Contas'], ['cartao', 'Cartões de crédito'], ['loja', 'Crédito em lojas e apps'], ['beneficio', 'Benefícios'], ['invest', 'Investimentos']];
+  return G.map(([tp, nm]) => { const X = L.filter(c => c.tipo === tp && !(tp === 'invest' && c.daConta && conta(c.daConta))); if (!X.length) return '';
+    return `<div class="tiny" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 0">${nm}</div><div class="list">${X.map(c => itemConta(c) + (tp === 'conta' ? cofrinhosDe(c).map(x => itemConta(x, true)).join('') : '')).join('')}</div>`; }).join('');
+}
+function itemConta(c, dentro) {
+  const pp = c.pagaPor && conta(c.pagaPor);
+  const sub = dentro ? 'Cofrinho' : (TIPOS_CONTA[c.tipo] || '') + (pp ? ' · paga pela conta ' + pp.nome : '') + (c.tipo === 'cartao' && !c.fech ? ' · configurar fechamento' : '');
+  if (dentro) { const s = saldoConta(c); return `<div class="it" data-editconta="${c.id}" style="padding-left:22px"><div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti('pig', 18)}</div><div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small">${esc(brl(s))}</div>` : ''}</div>`; }
   const s = ['conta', 'invest', 'beneficio'].includes(c.tipo) ? saldoConta(c) : null;
   return `<div class="it" data-editconta="${c.id}">${logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small ${s < 0 ? 'neg' : ''}">${esc(brl(s))}</div>` : `<span style="color:var(--tx3)">${ic('right', 'width="18" height="18"')}</span>`}</div>`;
 }
@@ -1881,9 +2135,15 @@ function editarConta(c) {
   <div class="grid2"><div><label class="l">De quem</label><select class="f" id="cc-dono">${[...S.pessoas.map(p => [p.id, p.nome.split(' ')[0]]), ['casa', 'Casa']].map(([k, n]) => `<option value="${k}" ${k === b.dono ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
   <div><label class="l">Tipo</label><select class="f" id="cc-tipo">${Object.entries(TIPOS_CONTA).map(([k, n]) => `<option value="${k}" ${k === b.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
   <div id="cc-cart"><div class="grid2"><div><label class="l">Dia do fechamento</label><input class="f" id="cc-fech" inputmode="numeric" value="${b.fech || ''}" placeholder="ex.: 28"></div><div><label class="l">Dia do vencimento</label><input class="f" id="cc-venc" inputmode="numeric" value="${b.venc || ''}" placeholder="ex.: 5"></div></div>
-    <label class="l">Ou: cada compra vence em (dias)</label><input class="f" id="cc-prazo" inputmode="numeric" value="${b.prazo || ''}" placeholder="BônusCred: 30"></div>
+    <label class="l">Ou: cada compra vence em (dias)</label><input class="f" id="cc-prazo" inputmode="numeric" value="${b.prazo || ''}" placeholder="BônusCred: 30">
+    <label class="l">Ligado à conta</label><select class="f" id="cc-pagapor"><option value="">Nenhuma</option>${S.contas.filter(x => x.tipo === 'conta').map(x => `<option value="${x.id}" ${x.id === b.pagaPor ? 'selected' : ''}>${esc(x.nome)} · ${esc(pnome(x.dono))}</option>`).join('')}</select>
+    <div class="tiny" style="margin-top:4px">O “Pagamento de fatura” no extrato dessa conta vira pagamento deste cartão, e não despesa.</div>
+    <label class="l">Como o pagamento aparece no extrato</label><input class="f" id="cc-pagch" value="${esc((b.pagChaves || []).join(', '))}" placeholder="ex.: BNC CADASTROS, BONUSPAGO">
+    <div class="tiny" style="margin-top:4px">Nome de quem recebe o Pix. Vale para qualquer banco de onde vocês pagarem.</div></div>
+  <div id="cc-inv"><label class="l">Fica na conta</label><select class="f" id="cc-daconta"><option value="">Nenhuma</option>${S.contas.filter(x => x.tipo === 'conta').map(x => `<option value="${x.id}" ${x.id === b.daConta ? 'selected' : ''}>${esc(x.nome)} · ${esc(pnome(x.dono))}</option>`).join('')}</select></div>
   <div id="cc-ben"><label class="l">Saldo de hoje (R$)</label><input class="f" id="cc-saldo" inputmode="decimal" value="${saldoAtual != null ? String(saldoAtual.toFixed(2)).replace('.', ',') : ''}" placeholder="Confira no app do banco">
-    <div class="tiny" style="margin-top:4px">Os lançamentos importados depois de hoje vão somando a partir deste valor. Importar extrato (OFX, CSV ou PDF) atualiza o saldo sozinho.</div></div>
+    <div class="tiny" style="margin-top:4px">Os lançamentos importados depois de hoje vão somando a partir deste valor. Importar extrato (OFX, CSV ou PDF) atualiza o saldo sozinho.</div>
+    <div id="cc-rinv" class="tiny" style="margin-top:6px;color:var(--grn)">Cofrinho: se o saldo de hoje for maior que o calculado, a diferença entra como “Rendimento do cofrinho”.</div></div>
   <div class="grid2" style="margin-top:18px">${novo ? '<button class="btn" data-fechar>Cancelar</button>' : '<button class="btn danger" id="cc-del">Excluir</button>'}<button class="btn pri" id="cc-ok">Salvar</button></div>`);
   let icone = b.icone;
   const prevIco = () => { s.querySelector('#cc-ico-prev').innerHTML = logoBanco(Object.assign({}, b, { icone, banco: b.banco || s.querySelector('#cc-nome').value }), 48); s.querySelector('#cc-ico-x').style.display = icone ? '' : 'none'; };
@@ -1893,7 +2153,8 @@ function editarConta(c) {
     const S2 = 128, cv = document.createElement('canvas'); cv.width = cv.height = S2; const g = cv.getContext('2d'); const k = Math.max(S2 / img.width, S2 / img.height);
     g.imageSmoothingQuality = 'high'; g.drawImage(img, (S2 - img.width * k) / 2, (S2 - img.height * k) / 2, img.width * k, img.height * k); icone = cv.toDataURL('image/png'); if (icone.length > 30000) icone = cv.toDataURL('image/jpeg', .88); URL.revokeObjectURL(img.src); prevIco(); };
     img.src = URL.createObjectURL(f); };
-  const vis = () => { const t = s.querySelector('#cc-tipo').value; s.querySelector('#cc-cart').style.display = t === 'cartao' || t === 'loja' ? '' : 'none'; s.querySelector('#cc-ben').style.display = t === 'beneficio' || t === 'conta' || t === 'invest' ? '' : 'none'; };
+  const vis = () => { const t = s.querySelector('#cc-tipo').value; s.querySelector('#cc-cart').style.display = t === 'cartao' || t === 'loja' ? '' : 'none'; s.querySelector('#cc-ben').style.display = t === 'beneficio' || t === 'conta' || t === 'invest' ? '' : 'none'; s.querySelector('#cc-inv').style.display = t === 'invest' ? '' : 'none';
+    s.querySelector('#cc-rinv').style.display = t === 'invest' ? '' : 'none'; };
   s.querySelector('#cc-tipo').onchange = vis; vis();
   if (!novo) s.querySelector('#cc-del').onclick = () => {
     const n = live().filter(t => t.conta === b.id).length;
@@ -1903,11 +2164,19 @@ function editarConta(c) {
     const nome = s.querySelector('#cc-nome').value.trim(); if (!nome) { toast('Dê um nome para a conta'); return; }
     const num = id => { const v = parseInt(s.querySelector(id).value); return v >= 1 && v <= 31 ? v : null; };
     Object.assign(b, { nome, dono: s.querySelector('#cc-dono').value, tipo: s.querySelector('#cc-tipo').value, fech: num('#cc-fech'), venc: num('#cc-venc'), prazo: parseInt(s.querySelector('#cc-prazo').value) || null, upd: Date.now() });
+    if (b.tipo === 'cartao' || b.tipo === 'loja') { b.pagaPor = s.querySelector('#cc-pagapor').value || undefined; b.pagChaves = s.querySelector('#cc-pagch').value.split(',').map(x => x.trim()).filter(Boolean); }
+    if (b.tipo === 'invest') b.daConta = s.querySelector('#cc-daconta').value || undefined;
     if (icone) b.icone = icone; else delete b.icone;
     const sv = s.querySelector('#cc-saldo').value.trim(), sn = P.money(sv);
-    if (sv && !isNaN(sn) && (saldoAtual == null || Math.abs(sn - saldoAtual) > 0.004)) b.saldoRef = { valor: sn, data: today() };
+    if (sv && !isNaN(sn) && b.tipo === 'invest' && saldoAtual != null && sn - saldoAtual > 0.004 && !novo) {
+      // cofrinho: o que cresceu sem ninguém guardar é rendimento (separado do rendimento da conta)
+      const d = today(), id = b.id + '|rend|' + d, ex = S.tx.find(x => x.id === id);
+      if (ex) { ex.valor = Math.round((ex.valor + sn - saldoAtual) * 100) / 100; delete ex.del; ex.upd = Date.now(); }
+      else S.tx.push({ id, conta: b.id, data: d, desc: 'Rendimento do cofrinho ' + b.nome, nome: 'Rendimento do cofrinho', valor: Math.round((sn - saldoAtual) * 100) / 100, tipo: 'receita', cat: 'Rendimentos', sub: '', criado: Date.now(), upd: Date.now() });
+    } else if (sv && !isNaN(sn) && (saldoAtual == null || Math.abs(sn - saldoAtual) > 0.004)) b.saldoRef = { valor: sn, data: today() };
     if (!sv && b.saldoRef) delete b.saldoRef;
     if (!b.banco) b.banco = nome;
+    conciliaFaturas();
     // recalcula vencimentos sem data
     for (const t of live()) if (t.conta === b.id && !t.venc && naFatura(t)) { const v = b.prazo ? P.addDays(t.data, b.prazo) : vencCartao(b, t.data); if (v) { t.venc = v; t.upd = Date.now(); } }
     if (novo) S.contas.push(b); save(); s.remove(); render(); toast('Conta salva');
@@ -1938,8 +2207,8 @@ async function salvarBackup() {
     const add = (nome, rows) => X.utils.book_append_sheet(wb, X.utils.json_to_sheet(rows.length ? rows : [{}]), nome);
     add('Lançamentos', S.tx.slice().sort((a, b) => a.data.localeCompare(b.data)).map(t => { const c = conta(t.conta) || {}; return {
       Data: t.data, Descrição: t.nome || t.desc, Valor: t.valor, Tipo: TIPOS[t.tipo] || t.tipo, Categoria: t.cat || '', Subcategoria: t.sub || '', Conta: c.nome || '', De: donoNome(c.dono),
-      Vencimento: t.venc || '', 'No extrato': t.desc || '', id: t.id, conta_id: t.conta, tipo_id: t.tipo, meio: t.meio || '', criado: t.criado || 0, upd: t.upd || 0, excluido: t.del ? 1 : 0, travado: t.travado ? 1 : 0, parc: t.parc || '', contrato: t.contrato || '' }; }));
-    add('Contas', S.contas.map(c => ({ id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Banco: c.banco || '', Fechamento: c.fech || '', Vencimento: c.venc || '', PrazoDias: c.prazo || '', SaldoInicial: c.saldoIni || 0, SaldoRef: c.saldoRef ? c.saldoRef.valor : '', SaldoRefData: c.saldoRef ? c.saldoRef.data : '', chaves: (c.chaves || []).join(' | '), icone: c.icone || '', upd: c.upd || 0 })));
+      Vencimento: t.venc || '', 'No extrato': t.desc || '', id: t.id, conta_id: t.conta, tipo_id: t.tipo, meio: t.meio || '', criado: t.criado || 0, upd: t.upd || 0, excluido: t.del ? 1 : 0, travado: t.travado ? 1 : 0, parc: t.parc || '', contrato: t.contrato || '', pagoEm: t.pagoEm || '', aberto: t.aberto ? 1 : 0 }; }));
+    add('Contas', S.contas.map(c => ({ id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Banco: c.banco || '', Fechamento: c.fech || '', Vencimento: c.venc || '', PrazoDias: c.prazo || '', SaldoInicial: c.saldoIni || 0, SaldoRef: c.saldoRef ? c.saldoRef.valor : '', SaldoRefData: c.saldoRef ? c.saldoRef.data : '', chaves: (c.chaves || []).join(' | '), icone: c.icone || '', pagaPor: c.pagaPor || '', pagChaves: (c.pagChaves || []).join(' | '), daConta: c.daConta || '', upd: c.upd || 0 })));
     add('Dívidas', S.contratos.map(c => ({ id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Parcela: c.parcela, Total: c.total, Pagas: c.pagas, Dia: c.dia, Banco: c.banco || '', Numero: c.numero || '', Liberado: c.liberado || '', TotalPagar: c.totalPagar || '', Juros: c.juros || '', Contratado: c.contratado || '', parcelas: c.parcelas ? JSON.stringify(c.parcelas) : '', upd: c.upd || 0 })));
     add('Fixas', (S.fixas || []).map(f => ({ id: f.id, Nome: f.nome, Tipo: f.tipo, Valor: f.valor, Dia: f.dia, Categoria: f.cat || '', Subcategoria: f.sub || '', De: f.dono, Texto: f.chave || '', upd: f.upd || 0 })));
     add('Categorias', ['despesa', 'receita', 'entdivida'].flatMap(tp => S.cats[tp].map(c => ({ tipo: tp, Nome: c.nome, Emoji: c.e, Cor: c.cor, Subcategorias: c.subs.join(' | '), Orçamento: S.orc[c.nome] || '', orc_upd: (S.orcUpd || {})[c.nome] || 0 }))));
@@ -1967,8 +2236,8 @@ async function lerBackup(file) {
   const sh = n => wb.Sheets[n] ? X.utils.sheet_to_json(wb.Sheets[n], { defval: '' }) : [];
   if (!wb.Sheets['Lançamentos'] || !wb.Sheets['Contas']) throw new Error('Esse arquivo não é um backup deste app');
   const str = v => v == null ? '' : String(v);
-  const tx = sh('Lançamentos').filter(r => r.id).map(r => ({ id: str(r.id), conta: str(r.conta_id), data: str(r.Data).slice(0, 10), nome: str(r['Descrição']), desc: str(r['No extrato']) || str(r['Descrição']), valor: +r.Valor || 0, tipo: str(r.tipo_id) || 'despesa', cat: str(r.Categoria), sub: str(r.Subcategoria), venc: str(r.Vencimento) || undefined, meio: str(r.meio), criado: +r.criado || 0, upd: +r.upd || 0, del: +r.excluido === 1 || undefined, travado: +r.travado === 1 || undefined, parc: str(r.parc) || undefined, contrato: str(r.contrato) || undefined }));
-  const contas = sh('Contas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), banco: str(r.Banco), fech: +r.Fechamento || null, venc: +r.Vencimento || null, prazo: +r.PrazoDias || null, saldoIni: +r.SaldoInicial || 0, saldoRef: r.SaldoRefData !== '' && r.SaldoRefData != null && r.SaldoRef !== '' ? { valor: +r.SaldoRef || 0, data: str(r.SaldoRefData).slice(0, 10) } : undefined, chaves: str(r.chaves).split(' | ').filter(Boolean), icone: str(r.icone) || undefined, upd: +r.upd || 0 }));
+  const tx = sh('Lançamentos').filter(r => r.id).map(r => ({ id: str(r.id), conta: str(r.conta_id), data: str(r.Data).slice(0, 10), nome: str(r['Descrição']), desc: str(r['No extrato']) || str(r['Descrição']), valor: +r.Valor || 0, tipo: str(r.tipo_id) || 'despesa', cat: str(r.Categoria), sub: str(r.Subcategoria), venc: str(r.Vencimento) || undefined, meio: str(r.meio), criado: +r.criado || 0, upd: +r.upd || 0, del: +r.excluido === 1 || undefined, travado: +r.travado === 1 || undefined, parc: str(r.parc) || undefined, contrato: str(r.contrato) || undefined, pagoEm: str(r.pagoEm) || undefined, aberto: +r.aberto === 1 || undefined }));
+  const contas = sh('Contas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), banco: str(r.Banco), fech: +r.Fechamento || null, venc: +r.Vencimento || null, prazo: +r.PrazoDias || null, saldoIni: +r.SaldoInicial || 0, saldoRef: r.SaldoRefData !== '' && r.SaldoRefData != null && r.SaldoRef !== '' ? { valor: +r.SaldoRef || 0, data: str(r.SaldoRefData).slice(0, 10) } : undefined, chaves: str(r.chaves).split(' | ').filter(Boolean), icone: str(r.icone) || undefined, pagaPor: str(r.pagaPor) || undefined, pagChaves: r.pagChaves != null ? str(r.pagChaves).split(' | ').filter(Boolean) : undefined, daConta: str(r.daConta) || undefined, upd: +r.upd || 0 }));
   const json = v => { try { return v ? JSON.parse(v) : undefined; } catch (e) { return undefined; } };
   const contratos = sh('Dívidas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), parcela: +r.Parcela || 0, total: +r.Total || 0, pagas: +r.Pagas || 0, dia: +r.Dia || 1,
     banco: str(r.Banco) || undefined, numero: str(r.Numero) || undefined, liberado: +r.Liberado || undefined, totalPagar: +r.TotalPagar || undefined, juros: +r.Juros || undefined, contratado: str(r.Contratado) || undefined, parcelas: json(str(r.parcelas)), upd: +r.upd || 0 }));
