@@ -1,7 +1,7 @@
 // Guarda o app no celular para abrir sem internet.
 // O app em si: tenta a internet primeiro (para pegar atualizações) e usa a cópia guardada se estiver offline.
 // Bibliotecas e fontes: usa a cópia guardada e atualiza em segundo plano.
-const CACHE = 'financas-v2';
+const CACHE = 'financas-v3';
 const APP = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 const EXTERNOS = /^https:\/\/(cdnjs\.cloudflare\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
