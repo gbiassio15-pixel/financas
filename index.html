@@ -499,6 +499,9 @@ P.SEED_RULES = [
   ['LIBERACAO DE DINHEIRO', 'Flash → Mercado Pago', '', 'transf'],
   ['DINHEIRO RESERVADO', 'Investimento', '', 'transf'], ['DINHEIRO RETIRADO', 'Investimento', '', 'transf'], ['COFRINHO', 'Investimento', '', 'transf'],
   ['DINHEIRO GUARDADO', 'Investimento', '', 'transf'], ['DINHEIRO RESGATADO', 'Investimento', '', 'transf'], ['APLICACAO RDB', 'Investimento', '', 'transf'], ['RESGATE RDB', 'Investimento', '', 'transf'],
+  ['INTEGRALIZACAO DE CAPITAL', 'Investimento', '', 'transf'], ['INTEGRALIZACAO CAPITAL', 'Investimento', '', 'transf'], ['INTEGR CAPITAL', 'Investimento', '', 'transf'], ['INTEGR. CAPITAL', 'Investimento', '', 'transf'], ['INTEG.CAPITAL', 'Investimento', '', 'transf'], ['INTEG CAPITAL', 'Investimento', '', 'transf'],
+  ['COTA CAPITAL', 'Investimento', '', 'transf'], ['COTAS CAPITAL', 'Investimento', '', 'transf'], ['COTAS DE CAPITAL', 'Investimento', '', 'transf'], ['CAPITAL SOCIAL', 'Investimento', '', 'transf'], ['DEVOLUCAO DE CAPITAL', 'Investimento', '', 'transf'], ['RESGATE DE CAPITAL', 'Investimento', '', 'transf'], ['RESGATE CAPITAL', 'Investimento', '', 'transf'],
+  ['JUROS AO CAPITAL', 'Rendimentos', '', 'receita', 1], ['JUROS SOBRE CAPITAL', 'Rendimentos', '', 'receita', 1], ['JUROS CAPITAL', 'Rendimentos', '', 'receita', 1], ['DISTRIBUICAO DE SOBRAS', 'Rendimentos', '', 'receita', 1], ['SOBRAS', 'Rendimentos', '', 'receita', 1],
   ['RENDIMENTO', 'Rendimentos', '', 'receita'],
   ['CAIU SALDO', 'Benefícios', '', 'receita'], ['DESCONTO NA FATURA', 'Descontos e cashback', '', 'receita', 1], ['DESCONTO POR PAGAR ADIANTADO', 'Descontos e cashback', '', 'receita', 1], ['CASHBACK', 'Descontos e cashback', '', 'receita', 1],
   ['EMPRESTIMOS MERCADO PAGO', 'Empréstimo', '', 'pagdivida', -1], ['PAGAMENTO DE PARCELA', 'Empréstimo', '', 'pagdivida', -1], ['CREDITO EM PARCELAS FIXAS', 'Empréstimo', '', 'entdivida', 1],
@@ -643,7 +646,7 @@ function seed() {
       entdivida: CATS_ENTDIV.map(([nome, e, cor]) => ({ nome, e, cor, subs: [], i: ICON_CAT[nome] })),
     },
     regras: P.SEED_RULES.map(r => Object.assign({ upd: 1 }, r)),
-    mig: 9, orc: {}, orcUpd: {}, tx: [], contratos: [], fixas: [], meiChaves: [], ultimoBackup: null, mud: 0,
+    mig: 10, orc: {}, orcUpd: {}, tx: [], contratos: [], fixas: [], meiChaves: [], ultimoBackup: null, mud: 0,
   };
 }
 function load() { try { const t = localStorage.getItem(KEY); return t ? JSON.parse(t) : null; } catch (e) { storageOk = false; return null; } }
@@ -661,6 +664,12 @@ function migra() {
   if (S.mig < 7) migra7();
   if (S.mig < 8) migra8();
   if (S.mig < 9) { const seedK = new Set(S.regras.map(r => P.norm(r.k))); for (const r of P.SEED_RULES) if (!seedK.has(P.norm(r.k))) S.regras.push(Object.assign({ upd: 1 }, r)); reaplicaRegras(); S.mig = 9; salvaLocal(); }
+  if (S.mig < 10) { const agora = Date.now(); { const seedK = new Set(S.regras.map(r => P.norm(r.k))); for (const r of P.SEED_RULES) if (!seedK.has(P.norm(r.k))) S.regras.push(Object.assign({ upd: 1 }, r)); }
+    for (const t of S.tx.slice()) { if (t.del || t.travado || t.cofre || !ehCapital(t.desc) || /^esp\|/.test(t.id)) continue; const c = conta(t.conta); if (!c || c.tipo !== 'conta') continue;
+      const cl = P.classify({ desc: t.desc, valor: t.valor }, c, S.regras, S.pessoas);
+      if (cl.cat === 'Investimento') { Object.assign(t, { tipo: 'transf', cat: 'Investimento', sub: '', upd: agora }); espelhaInvest(t, c, agora); }
+      else if (cl.cat === 'Rendimentos' && !t.cat) Object.assign(t, { tipo: 'receita', cat: 'Rendimentos', sub: '', upd: agora }); }
+    S.mig = 10; salvaLocal(); }
   P.meiChaves = S.meiChaves || [];
   try { const a = conciliaFaturas(), b = pareiaTransf(); if (a || b) salvaLocal(); } catch (e) { console.warn(e); }
 }
@@ -1238,7 +1247,7 @@ function rResumo() {
 function cardSaldos(L) {
   const mk = V.mes;
   const linha = ({ c, s }, sub) => { const r = rendeuMes(c, mk);
-    return `<div class="it" data-editconta="${c.id}" ${sub ? 'style="padding-left:22px"' : ''}>${sub ? `<div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti('pig', 18)}</div>` : logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${sub ? 'Cofrinho' : donoTag(c.dono)} ${c.saldoRef ? 'em ' + dshort(c.saldoRef.data) : c.tipo === 'conta' ? '' : 'estimado'}</div></div><div class="val ${s != null && s < 0 ? 'neg' : ''}">${s == null ? '<span class="tag amb">informar</span>' : esc(brl(s))}${r > 0.004 ? `<div class="tiny" style="color:var(--grn)">rendeu ${esc(brl(r))}</div>` : ''}</div></div>`; };
+    return `<div class="it" data-editconta="${c.id}" ${sub ? 'style="padding-left:22px"' : ''}>${sub ? `<div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti(c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'coins' : 'pig', 18)}</div>` : logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${sub ? (c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'Cotas capital · volta quando fechar a conta' : 'Cofrinho') : donoTag(c.dono)} ${c.saldoRef ? 'em ' + dshort(c.saldoRef.data) : c.tipo === 'conta' ? '' : 'estimado'}</div></div><div class="val ${s != null && s < 0 ? 'neg' : ''}">${s == null ? '<span class="tag amb">informar</span>' : esc(brl(s))}${r > 0.004 ? `<div class="tiny" style="color:var(--grn)">rendeu ${esc(brl(r))}</div>` : ''}</div></div>`; };
   const grupo = (tipos, titulo) => {
     const G = L.filter(x => tipos.includes(x.c.tipo) && !(x.c.tipo === 'invest' && x.c.daConta && L.some(y => y.c.id === x.c.daConta))); if (!G.length) return '';
     const todos = G.flatMap(x => [x, ...L.filter(y => y.c.tipo === 'invest' && y.c.daConta === x.c.id)]);
@@ -1767,18 +1776,7 @@ function confirmaImport() {
     const velho = S.tx.findIndex(x => x.id === t.id && x.del && x.zerado);
     if (velho >= 0) S.tx[velho] = t; else S.tx.push(t); n++;
     if (l.parTx) { const o = S.tx.find(x => x.id === l.parTx); if (o && !o.travado) Object.assign(o, { tipo: 'neutro', cat: '', sub: '', upd: agora }); }
-    if (l.espelho === 'invest' && t.tipo === 'transf' && c.tipo !== 'invest') {
-      // dinheiro que vai para o cofrinho/caixinha aparece também na conta de investimento
-      const nmC = (t.desc || '').replace(/^.*?(dinheiro\s+(reservado|retirado|guardado|resgatado)|aplica[çc][ãa]o|resgate)\s*(rdb)?\s*/i, '').replace(/\s+\d{6,}.*$/, '').trim();
-      const nomeInv = nmC && nmC.length > 2 ? nmC : 'Cofrinho ' + (c.banco || c.nome);
-      const daConta = S.contas.filter(x => x.tipo === 'invest' && (x.daConta === c.id || (!x.daConta && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco))));
-      let inv = daConta.find(x => P.norm(x.nome) === P.norm(nomeInv)) || daConta.find(x => /^COFRINHO (MERCADO PAGO|NUBANK|INTER|SICREDI)$/.test(P.norm(x.nome)) && !live().some(y => y.conta === x.id));
-      if (inv && P.norm(inv.nome) !== P.norm(nomeInv) && nmC) { inv.nome = nomeInv; inv.upd = agora; }
-      if (!inv) { inv = { id: 'inv-' + uid(), nome: nomeInv, dono: c.dono, tipo: 'invest', banco: c.banco || c.nome, daConta: c.id, chaves: [], saldoIni: 0, upd: agora }; S.contas.push(inv); criouInv = inv.nome; }
-      if (!inv.daConta) inv.daConta = c.id;
-      if (!S.tx.some(x => x.id === 'esp|' + t.id)) S.tx.push({ id: 'esp|' + t.id, conta: inv.id, data: t.data, desc: (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ') + c.nome, nome: (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ') + c.nome, valor: -t.valor, tipo: 'transf', cat: 'Investimento', sub: '', criado: agora, upd: agora });
-      t.cofre = inv.id;
-    }
+    if (l.espelho === 'invest' && t.tipo === 'transf' && c.tipo !== 'invest') { const nv = espelhaInvest(t, c, agora); if (nv) criouInv = nv; }
     if (l.espelho === 'beneficio') {
       const b = S.contas.find(x => x.tipo === 'beneficio' && x.dono === c.dono);
       if (b && !S.tx.some(x => x.id === 'esp|' + t.id)) S.tx.push({ id: 'esp|' + t.id, conta: b.id, data: t.data, desc: 'Passado na maquininha → ' + c.nome, nome: 'Passado na maquininha → ' + c.nome, valor: -Math.abs(t.valor), tipo: 'transf', cat: '', sub: '', criado: agora, upd: agora });
@@ -1954,6 +1952,23 @@ function conciliaFaturas() {
     for (const t of itens) { if (t._r && !(t.pagoPor)) { /* voltou a ficar em aberto */ } if (t._r) { delete t._r; t.upd = agora; mudou = true; } else if (t.pagoPor) { t.upd = agora; mudou = true; } }
   }
   return mudou;
+}
+// dinheiro que vai para o cofrinho/caixinha/cotas aparece também na conta de investimento (ligada à conta)
+const ehCapital = d => /CAPITAL/.test(P.norm(d || ''));
+function espelhaInvest(t, c, agora = Date.now()) {
+  let criou = '';
+  const cap = ehCapital(t.desc);
+  const nmC = cap ? '' : (t.desc || '').replace(/^.*?(dinheiro\s+(reservado|retirado|guardado|resgatado)|aplica[çc][ãa]o|resgate)\s*(rdb)?\s*/i, '').replace(/\s+\d{6,}.*$/, '').trim();
+  const nomeInv = cap ? 'Cotas capital ' + (c.banco || c.nome) : nmC && nmC.length > 2 ? nmC : 'Cofrinho ' + (c.banco || c.nome);
+  const daConta = S.contas.filter(x => x.tipo === 'invest' && (x.daConta === c.id || (!x.daConta && x.dono === c.dono && P.norm(x.banco) === P.norm(c.banco))));
+  let inv = daConta.find(x => P.norm(x.nome) === P.norm(nomeInv)) || (cap ? null : daConta.find(x => /^COFRINHO (MERCADO PAGO|NUBANK|INTER|SICREDI)$/.test(P.norm(x.nome)) && !live().some(y => y.conta === x.id)));
+  if (inv && P.norm(inv.nome) !== P.norm(nomeInv) && nmC) { inv.nome = nomeInv; inv.upd = agora; }
+  if (!inv) { inv = { id: 'inv-' + uid(), nome: nomeInv, dono: c.dono, tipo: 'invest', banco: c.banco || c.nome, daConta: c.id, chaves: [], saldoIni: 0, upd: agora }; if (cap) inv.capital = true; S.contas.push(inv); criou = inv.nome; }
+  if (!inv.daConta) inv.daConta = c.id;
+  const pal = cap ? (t.valor < 0 ? 'Integralizado de ' : 'Capital devolvido para ') : (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ');
+  if (!S.tx.some(x => x.id === 'esp|' + t.id)) S.tx.push({ id: 'esp|' + t.id, conta: inv.id, data: t.data, desc: pal + c.nome, nome: pal + c.nome, valor: -t.valor, tipo: 'transf', cat: 'Investimento', sub: '', criado: agora, upd: agora });
+  t.cofre = inv.id; t.upd = agora;
+  return criou;
 }
 // ---- contratos de crédito (PDF do Mercado Pago e do Nubank)
 function achaDono(nome) {
@@ -2440,8 +2455,8 @@ function listaContas(L) {
 }
 function itemConta(c, dentro) {
   const pp = c.pagaPor && conta(c.pagaPor);
-  const sub = dentro ? 'Cofrinho' : (TIPOS_CONTA[c.tipo] || '') + (pp ? ' · paga pela conta ' + pp.nome : '') + (c.tipo === 'cartao' && !c.fech ? ' · configurar fechamento' : '');
-  if (dentro) { const s = saldoConta(c); return `<div class="it" data-editconta="${c.id}" style="padding-left:22px"><div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti('pig', 18)}</div><div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small">${esc(brl(s))}</div>` : ''}</div>`; }
+  const sub = dentro ? (c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'Cotas capital' : 'Cofrinho') : (TIPOS_CONTA[c.tipo] || '') + (pp ? ' · paga pela conta ' + pp.nome : '') + (c.tipo === 'cartao' && !c.fech ? ' · configurar fechamento' : '');
+  if (dentro) { const s = saldoConta(c); return `<div class="it" data-editconta="${c.id}" style="padding-left:22px"><div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti(c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'coins' : 'pig', 18)}</div><div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small">${esc(brl(s))}</div>` : ''}</div>`; }
   const s = ['conta', 'invest', 'beneficio'].includes(c.tipo) ? saldoConta(c) : null;
   return `<div class="it" data-editconta="${c.id}">${logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small ${s < 0 ? 'neg' : ''}">${esc(brl(s))}</div>` : `<span style="color:var(--tx3)">${ic('right', 'width="18" height="18"')}</span>`}</div>`;
 }
