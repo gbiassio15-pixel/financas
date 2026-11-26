@@ -1,9 +1,9 @@
 // Guarda o app no celular para abrir sem internet.
 // O app em si: tenta a internet primeiro (para pegar atualizações) e usa a cópia guardada se estiver offline.
 // Bibliotecas e fontes: usa a cópia guardada e atualiza em segundo plano.
-const CACHE = 'financas-v6';
+const CACHE = 'financas-v7';
 const LOGOS = ['nubank', 'sicredi', 'inter', 'mercado-pago', 'caju', 'flash', 'bonuscred', 'shopee', 'riachuelo'].map(n => './logo-' + n + '.png');
-const APP = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', ...LOGOS];
+const APP = ['./', './index.html', './manifest.webmanifest', './gema-192.png', './gema-512.png', './gema-180.png', ...LOGOS];
 const EXTERNOS = /^https:\/\/(cdnjs\.cloudflare\.com\/|fonts\.googleapis\.com\/|fonts\.gstatic\.com\/|www\.gstatic\.com\/firebasejs\/|cdn\.jsdelivr\.net\/npm\/@?tesseract)/;
 
 self.addEventListener('install', e => {
