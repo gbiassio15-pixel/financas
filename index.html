@@ -1054,14 +1054,15 @@ function filtraQuem(t) { if (V.quem === 'all') return true; const c = conta(t.co
 
 function totaisMes(mk) {
   let ent = 0, desp = 0, entDiv = 0, pagDiv = 0; const porCat = {};
+  const porSub = {};
   for (const t of live()) {
     if (mkey(t.data) !== mk || !filtraQuem(t)) continue;
     if (t.tipo === 'receita') ent += t.valor;
-    else if (t.tipo === 'despesa') { desp -= t.valor; const k = t.cat || ''; porCat[k] = (porCat[k] || 0) - t.valor; }
+    else if (t.tipo === 'despesa') { desp -= t.valor; const k = t.cat || ''; porCat[k] = (porCat[k] || 0) - t.valor; const ss = (porSub[k] = porSub[k] || {}); ss[t.sub || ''] = (ss[t.sub || ''] || 0) - t.valor; }
     else if (t.tipo === 'entdivida') entDiv += t.valor;
     else if (t.tipo === 'pagdivida' && !['cartao', 'loja'].includes((conta(t.conta) || {}).tipo)) pagDiv -= t.valor;
   }
-  return { ent, desp, entDiv, pagDiv, saldo: ent - desp, porCat };
+  return { ent, desp, entDiv, pagDiv, saldo: ent - desp, porCat, porSub };
 }
 
 // ================= navegação =================
@@ -1223,7 +1224,10 @@ function rResumo() {
     ${cats.length ? `<div class="segbar">${cats.map(([k, v]) => `<i style="width:${v / T.desp * 100}%;background:${catInfo('despesa', k).cor}"></i>`).join('')}</div>
     <div class="list">${cats.map(([k, v]) => { const ant = Ta.porCat[k] || 0; const o = (S.orc || {})[k];
       return `<div class="it" data-cat="${esc(k)}">${catIc('despesa', k, 36)}<div class="mid"><div class="row between"><span class="t">${esc(k || 'Sem categoria')}</span><span class="val">${esc(brl(v))}</span></div>
-      <div class="s">${Math.round(v / T.desp * 100)}% · ${o ? (v > o ? '<span style="color:var(--red);font-weight:600">passou do limite</span> · ' : '') + Math.round(v / o * 100) + '% do limite de ' + esc(brl0(o)) : (ant ? (v > ant ? '▲ ' : '▼ ') + esc(brl0(Math.abs(v - ant))) + ' vs mês anterior' : 'sem gasto no mês anterior')}</div></div></div>`; }).join('')}</div>`
+      <div class="s">${Math.round(v / T.desp * 100)}% · ${o ? (v > o ? '<span style="color:var(--red);font-weight:600">passou do limite</span> · ' : '') + Math.round(v / o * 100) + '% do limite de ' + esc(brl0(o)) : (ant ? (v > ant ? '▲ ' : '▼ ') + esc(brl0(Math.abs(v - ant))) + ' vs mês anterior' : 'sem gasto no mês anterior')}</div></div><span style="color:var(--tx3);margin-left:6px;transition:transform .2s;${V.abreCat === k ? 'transform:rotate(90deg)' : ''}">${ti('chevron-right', 18)}</span></div>
+      ${V.abreCat === k ? (() => { const subs = Object.entries(T.porSub[k] || {}).filter(([, x]) => Math.abs(x) > 0.004).sort((a, b) => b[1] - a[1]); const cor = catInfo('despesa', k).cor;
+        return `<div style="margin:2px 0 8px 46px;border-left:2px solid ${cor}33;padding-left:10px">${subs.map(([sb, x]) => `<div class="row between" data-catsub="${esc(k)}|${esc(sb)}" style="padding:7px 0;cursor:pointer;gap:8px"><span class="row" style="gap:8px;min-width:0">${catIc('despesa', k, 28, sb)}<span class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sb || (k ? 'Sem subcategoria' : 'Sem categoria'))}</span></span><span class="small" style="white-space:nowrap"><b>${esc(brl(x))}</b> <span class="muted">${Math.round(x / v * 100)}%</span></span></div>`).join('')}
+          <button class="btn sm" data-catver="${esc(k)}" style="margin:4px 0 2px">${ti('list', 15)} Ver lançamentos</button></div>`; })() : ''}`; }).join('')}</div>`
     : `<div class="empty"><div class="e">${ti('chart-pie', 40)}</div>Nenhuma despesa neste mês.<br><button class="btn pri sm" style="margin-top:10px" data-tab="importar">Importar extrato</button></div>`}
   </div>
   ${graficoAcumulado()}
@@ -1265,7 +1269,10 @@ function cardSaldos(L) {
 }
 
 document.addEventListener('click', e => {
-  const c = e.target.closest('[data-cat]'); if (c && V.tab === 'resumo') { V.fCat = c.dataset.cat || '(sem)'; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); }
+  const cs = e.target.closest('[data-catsub]'); if (cs && V.tab === 'resumo') { const [k, sb] = cs.dataset.catsub.split('|'); V.fCat = k || '(sem)'; V.fSub = sb || '(sem)'; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); return; }
+  const cv = e.target.closest('[data-catver]'); if (cv && V.tab === 'resumo') { V.fCat = cv.dataset.catver || '(sem)'; V.fSub = ''; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); return; }
+  const c = e.target.closest('[data-cat]'); if (c && V.tab === 'resumo' && !c.dataset.cat) { V.fCat = '(sem)'; V.fSub = ''; V.tab = 'lanc'; V.revisar = false; render(); window.scrollTo(0, 0); return; }
+  if (c && V.tab === 'resumo') { const k = c.dataset.cat; V.abreCat = V.abreCat === k ? null : k; const y = window.scrollY; render(); window.scrollTo(0, y); }
   const r = e.target.closest('[data-revisar]'); if (r) { V.revisar = true; V.fCat = ''; V.tab = 'lanc'; render(); }
   const m = e.target.closest('[data-irmes]'); if (m) { V.mes = m.dataset.irmes; render(); }
 });
@@ -1418,7 +1425,7 @@ function rLanc() {
     <button class="chip ${!V.fConta && !V.fCat && !V.revisar ? 'on' : ''}" data-fx="tudo">Tudo</button>
     <button class="chip" id="bt-porNome" data-pornome style="display:${V.revisar ? '' : 'none'};background:var(--acc);color:var(--onacc)">${ti('list-check', 14, 'style="vertical-align:-2px"')} Classificar por nome</button>
     <button class="chip ${V.revisar ? 'on' : ''}" data-fx="rev">${ti('help-circle', 14, 'style="vertical-align:-2px"')} A revisar</button>
-    ${V.fCat ? `<button class="chip on" data-fx="cat">${esc(V.fCat === '(sem)' ? 'Sem categoria' : V.fCat)} ${ti('x', 13, 'style="vertical-align:-2px"')}</button>` : ''}
+    ${V.fCat ? `<button class="chip on" data-fx="cat">${esc((V.fCat === '(sem)' ? 'Sem categoria' : V.fCat) + (V.fSub ? ' › ' + (V.fSub === '(sem)' ? 'sem subcategoria' : V.fSub) : ''))} ${ti('x', 13, 'style="vertical-align:-2px"')}</button>` : ''}
     ${contas.map(c => `<button class="chip ${V.fConta === c.id ? 'on' : ''}" data-fconta="${c.id}">${esc(c.nome)}${V.quem === 'all' ? ' · ' + esc(donoNome(c.dono).split(' ')[0]) : ''}</button>`).join('')}
   </div><div id="lista-lanc"></div>`;
   $('#app').insertAdjacentHTML('beforeend', `<button class="fab" data-novo aria-label="Novo lançamento">${ic('plus')}</button>`);
@@ -1435,6 +1442,7 @@ function pintaLista() {
   let L = live().filter(t => (todosMeses || mkey(t.data) === V.mes) && filtraQuem(t));
   if (V.fConta) L = L.filter(t => t.conta === V.fConta);
   if (V.fCat) L = L.filter(t => t.tipo === 'despesa' && (V.fCat === '(sem)' ? !t.cat : t.cat === V.fCat));
+  if (V.fCat && V.fSub) L = L.filter(t => V.fSub === '(sem)' ? !t.sub : t.sub === V.fSub);
   if (V.revisar) L = L.filter(t => t.tipo === 'despesa' && !t.cat);
   const bt = document.querySelector('#bt-porNome'); if (bt) bt.style.display = V.revisar ? '' : 'none';
   if (q) {
@@ -1461,6 +1469,7 @@ function itemTx(t) {
   let sub = t.tipo === 'despesa' || t.tipo === 'receita' || t.tipo === 'entdivida' ? (t.cat ? t.cat + (t.sub ? ' › ' + t.sub : '') : '<span class="tag amb">Sem categoria</span>') : '<span class="tag">' + esc(TIPOS[t.tipo]) + '</span>';
   if (t.tipo === 'transf' && (t.par || t.espTransf)) { const o = t.par === 'fora' ? null : S.tx.find(x => x.id === (t.par || t.espTransf)); const oc = o && conta(o.conta);
     sub = `<span class="tag">${t.par === 'fora' ? (t.valor < 0 ? '→ conta de fora' : '← conta de fora') : oc ? (t.valor < 0 ? '→ ' : '← ') + esc(oc.nome) + (oc.dono !== c.dono ? ' · ' + esc(pnome(oc.dono)) : '') : 'Transferência'}</span>${t.espTransf ? ` <span class="tiny">(${t.palpite ? 'reconhecido pelo app' : 'até importar o extrato'})</span>` : t.peloValor ? ' <span class="tiny">(ligado pelo valor)</span>' : ''}`; }
+  else if (t.cofre && conta(t.cofre)) sub = `<span class="tag">${t.valor < 0 ? '→ ' : '← '}${esc(conta(t.cofre).nome)}</span>`;
   else if (ehTransfConta(t) && !t.par) sub = '<span class="tag amb">escolher conta</span>';
   const cor = t.tipo === 'receita' ? 'pos' : t.tipo === 'despesa' ? (t.valor < 0 ? '' : 'pos') : 'muted';
   return `<div class="it" data-tx="${t.id}">${catIc(t.tipo, t.cat, 40, t.sub)}<div class="mid"><div class="t">${esc(titulo)}</div><div class="s">${donoTag(c.dono)} ${t.cat && t.tipo !== 'transf' ? esc(t.cat + (t.sub ? ' › ' + t.sub : '')) : sub} · ${esc(c.nome || '')}${t.parc ? ' · parcela ' + t.parc : ''}${t.venc ? ' · vence ' + dshort(t.venc) : ''}${t.pagoEm ? ' · paga ' + dshort(t.pagoEm) + (t.venc && t.pagoEm > t.venc ? ' (com atraso)' : '') : atrasada(t) ? ' · <b style="color:var(--red)">atrasada</b>' : ''}</div></div><div class="val ${cor}">${esc(brl(t.valor))}</div></div>`;
@@ -1469,7 +1478,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-resolvetr]')) { resolverTransf(semPar().filter(t => mkey(t.data) === V.mes && filtraQuem(t))); return; }
   const f = e.target.closest('[data-fx]');
   if (e.target.closest('[data-pornome]')) { classificarPorNome(); return; }
-  if (f) { const k = f.dataset.fx; if (k === 'tudo') { V.fConta = ''; V.fCat = ''; V.revisar = false; } if (k === 'rev') V.revisar = !V.revisar; if (k === 'cat') V.fCat = ''; render(); }
+  if (f) { const k = f.dataset.fx; if (k === 'tudo') { V.fConta = ''; V.fCat = ''; V.fSub = ''; V.revisar = false; } if (k === 'rev') V.revisar = !V.revisar; if (k === 'cat') { V.fCat = ''; V.fSub = ''; } render(); }
   const fc = e.target.closest('[data-fconta]'); if (fc) { V.fConta = V.fConta === fc.dataset.fconta ? '' : fc.dataset.fconta; render(); }
   const tx = e.target.closest('[data-tx]'); if (tx) editarTx(S.tx.find(t => t.id === tx.dataset.tx));
   if (e.target.closest('[data-novo]')) editarTx(null);
@@ -1539,7 +1548,7 @@ function editarTx(t) {
     <label class="l">Classificação</label><select class="f" id="ed-class">${opcoesClass(classVal(base))}</select>
     <label class="row small" id="ed-lembrar-w" style="margin-top:8px;display:none"><input type="checkbox" class="chk" id="ed-lembrar" checked> Usar sempre para “<span id="ed-lnome"></span>”</label>
     <label class="l">Conta</label><select class="f" id="ed-conta">${opContas}</select>
-    ${!novo && ehTransfConta(base) ? `<button class="btn full" id="ed-par" style="margin-top:10px">${ti('arrows-exchange', 16)} ${base.par ? 'Trocar a outra conta da transferência' : 'Escolher a outra conta da transferência'}</button>` : ''}
+    ${!novo && CONTA_TR.includes(c0.tipo) ? `<button class="btn full" id="ed-par" style="margin-top:10px;${base.tipo === 'transf' ? '' : 'display:none'}">${ti('arrows-exchange', 16)} ${base.par || base.cofre ? 'Trocar a outra conta (conta, cofrinho, poupança)' : 'Escolher a outra conta (conta, cofrinho, poupança)'}</button>` : ''}
     <div id="ed-venc-w" style="${c0.tipo === 'cartao' || c0.tipo === 'loja' ? '' : 'display:none'}"><div class="grid2"><div><label class="l">${novo ? '1º vencimento' : 'Vencimento'}</label><input class="f" id="ed-venc" type="date" value="${base.venc || ''}"></div>
     ${novo ? `<div><label class="l">Parcelas</label><input class="f" id="ed-np" inputmode="numeric" value="1"></div>` : ''}</div>
     ${novo ? '<div class="tiny" style="margin-top:4px">Compra parcelada: informe o valor total e o número de parcelas. O app cria uma parcela por mês.</div>' : ''}</div>
@@ -1549,7 +1558,12 @@ function editarTx(t) {
   const cls = s.querySelector('#ed-class');
   cls.onchange = () => { const n = s.querySelector('#ed-nome').value.trim(); if (!novo && n) { s.querySelector('#ed-lembrar-w').style.display = 'flex'; s.querySelector('#ed-lnome').textContent = n; } };
   s.querySelector('#ed-conta').onchange = e => { const c = conta(e.target.value); s.querySelector('#ed-venc-w').style.display = c && (c.tipo === 'cartao' || c.tipo === 'loja') ? '' : 'none'; };
-  if (s.querySelector('#ed-par')) s.querySelector('#ed-par').onclick = () => { s.remove(); if (base.par && base.par !== 'fora') { const o = S.tx.find(x => x.id === base.par); if (o && !o.espTransf) { delete o.par; o.upd = Date.now(); } } delete base.par; resolverTransf([base]); };
+  if (s.querySelector('#ed-par')) { cls.addEventListener('change', () => { s.querySelector('#ed-par').style.display = cls.value.startsWith('transf|') ? '' : 'none'; });
+    s.querySelector('#ed-par').onclick = () => { s.remove(); if (!base.tipo || base.tipo !== 'transf') { aplicaClass(base, 'transf||'); }
+      if (base.par && base.par !== 'fora') { const o = S.tx.find(x => x.id === base.par); if (o && !o.espTransf) { delete o.par; o.upd = Date.now(); } }
+      // espelho antigo do cofrinho (do extrato): sai, porque vai ser escolhido de novo
+      const esp = S.tx.find(x => x.id === 'esp|' + base.id && !x.del); if (esp) { esp.del = true; esp.upd = Date.now(); }
+      delete base.par; delete base.cofre; base.upd = Date.now(); resolverTransf([base]); }; }
   if (!novo) s.querySelector('#ed-del').onclick = () => confirma('Excluir este lançamento?', () => { base.del = true; base.upd = Date.now(); save(); s.remove(); render(); toast('Lançamento excluído'); }, 'Excluir');
   s.querySelector('#ed-ok').onclick = () => {
     const v = P.money(s.querySelector('#ed-val').value);
@@ -1669,6 +1683,11 @@ function montaPrevia(res, contaId, nomeArq) {
   const usados = new Set();
   const linhas = res.rows.map(r => {
     const id = contaId + '|' + r.fitid;
+    if (!ids.has(id) && c && (c.tipo === 'conta' || c.tipo === 'invest')) {
+      // movimento de cofrinho lançado à mão antes: o do extrato não entra de novo
+      const ig = live().find(t => t.conta === contaId && !usados.has(t.id) && (c.tipo === 'invest' ? /^esp\||^tr\|/.test(t.id) : t.manual && t.cofre) && Math.abs(t.valor - r.valor) < 0.006 && Math.abs(P.diffDias(t.data, r.data)) <= 2);
+      if (ig) { usados.add(ig.id); ids.add(id); r._igual = ig.id; }
+    }
     if (!ids.has(id) && r.venc && naLoja.length) { const ig = naLoja.find(t => !usados.has(t.id) && t.venc === r.venc && Math.abs(t.valor - r.valor) < 0.011); if (ig) { usados.add(ig.id); ids.add(id); r._igual = ig.id; } }
     const cl = P.classify(r, c, S.regras, S.pessoas);
     const cln = P.clean(r.desc);
@@ -1884,9 +1903,12 @@ function mandaPara(t, destId, palpite) {
   for (const m of S.tx.filter(m => m.espTransf === t.id && !m.del)) { m.del = true; m.upd = agora; }
   if (destId === 'fora') { t.par = 'fora'; t.upd = agora; return; }
   const d = conta(destId); if (!d) return;
+  if (d.tipo === 'invest') { Object.assign(t, { tipo: 'transf', cat: 'Investimento', sub: '', cofre: d.id }); if (!d.daConta && conta(t.conta).tipo === 'conta') d.daConta = t.conta; }
+  else if (t.cofre) { delete t.cofre; if (t.cat === 'Investimento') t.cat = ''; }
   const id = 'tr|' + t.id + '|' + destId; const ex = S.tx.find(x => x.id === id);
   const o = conta(t.conta);
-  const novo = { id, conta: destId, data: t.data, desc: (t.valor < 0 ? 'Recebido de ' : 'Enviado para ') + o.nome + ' · ' + pnome(o.dono), nome: (t.valor < 0 ? 'Recebido de ' : 'Enviado para ') + o.nome, valor: -t.valor, tipo: 'transf', cat: '', sub: '', espTransf: t.id, criado: agora, upd: agora };
+  const pal = d.tipo === 'invest' ? (t.valor < 0 ? 'Guardado de ' : 'Resgatado para ') : (t.valor < 0 ? 'Recebido de ' : 'Enviado para ');
+  const novo = { id, conta: destId, data: t.data, desc: pal + o.nome + ' · ' + pnome(o.dono), nome: pal + o.nome, valor: -t.valor, tipo: 'transf', cat: '', sub: '', espTransf: t.id, criado: agora, upd: agora };
   if (palpite) novo.palpite = true;
   if (ex) { Object.assign(ex, novo); if (!palpite) delete ex.palpite; delete ex.del; } else S.tx.push(novo);
   t.par = id; t.paraConta = destId; t.upd = agora;
@@ -1895,7 +1917,8 @@ function resolverTransf(lista) {
   const L = lista || semPar(); if (!L.length) { toast('Todas as transferências já estão ligadas'); return; }
   const opc = t => { const o = conta(t.conta); const cs = S.contas.filter(c => c.tipo === 'conta' && c.id !== t.conta);
     const ordem = cs.sort((a, b) => (a.dono === o.dono ? 0 : 1) - (b.dono === o.dono ? 0 : 1));
-    return `<option value="">${t.valor < 0 ? 'Foi para qual conta?' : 'Veio de qual conta?'}</option>${ordem.map(c => `<option value="${c.id}">${esc(c.nome)} · ${esc(pnome(c.dono))}</option>`).join('')}<option value="fora">Conta que não acompanho aqui</option>`; };
+    const inv = S.contas.filter(c => c.tipo === 'invest').sort((a, b) => (a.daConta === t.conta ? 0 : 1) - (b.daConta === t.conta ? 0 : 1));
+    return `<option value="">${t.valor < 0 ? 'Foi para qual conta?' : 'Veio de qual conta?'}</option><optgroup label="Contas">${ordem.map(c => `<option value="${c.id}">${esc(c.nome)} · ${esc(pnome(c.dono))}</option>`).join('')}</optgroup>${inv.length ? `<optgroup label="Cofrinhos, poupança e investimentos">${inv.map(c => `<option value="${c.id}">${esc(c.nome)} · ${esc(pnome(c.dono))}</option>`).join('')}</optgroup>` : ''}<option value="fora">Conta que não acompanho aqui</option>`; };
   const s = sheet(`<div class="row between"><h2 style="margin:0">Transferências</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ic('x')}</button></div>
     <p class="small muted" style="margin-top:4px">Não achei a outra ponta destas transferências. Escolha a conta para o saldo de cada uma ficar certo. Quando você importar o extrato dessa conta, o app troca pelo lançamento de verdade.</p>
     <div class="list">${L.map((t, i) => `<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="row between"><div><div style="font-weight:600">${esc(t.nome || t.desc)}</div><div class="tiny">${dshort(t.data)} · ${esc(conta(t.conta).nome)} · ${esc(pnome(conta(t.conta).dono))}</div></div><b class="${t.valor > 0 ? 'pos' : ''}">${esc(brl(t.valor))}</b></div><select class="f" data-trdest="${i}" style="margin-top:6px">${opc(t)}</select></div>`).join('')}</div>
@@ -2481,6 +2504,7 @@ function editarConta(c) {
     <label class="l">Como o pagamento aparece no extrato</label><input class="f" id="cc-pagch" value="${esc((b.pagChaves || []).join(', '))}" placeholder="ex.: BNC CADASTROS, BONUSPAGO">
     <div class="tiny" style="margin-top:4px">Nome de quem recebe o Pix. Vale para qualquer banco de onde vocês pagarem.</div></div>
   <div id="cc-inv"><label class="l">Fica na conta</label><select class="f" id="cc-daconta"><option value="">Nenhuma</option>${S.contas.filter(x => x.tipo === 'conta').map(x => `<option value="${x.id}" ${x.id === b.daConta ? 'selected' : ''}>${esc(x.nome)} · ${esc(pnome(x.dono))}</option>`).join('')}</select></div>
+  ${!novo && b.tipo === 'invest' ? `<div class="grid2" style="margin-top:14px"><button class="btn" id="cc-guardar">${ti('plus', 16)} Guardar</button><button class="btn" id="cc-resgatar">${ti('cash', 16)} Resgatar</button></div>` : ''}
   <div id="cc-ben"><label class="l">Saldo de hoje (R$)</label><input class="f" id="cc-saldo" inputmode="decimal" value="${saldoAtual != null ? String(saldoAtual.toFixed(2)).replace('.', ',') : ''}" placeholder="Confira no app do banco">
     <div class="tiny" style="margin-top:4px">Os lançamentos importados depois de hoje vão somando a partir deste valor. Importar extrato (OFX, CSV ou PDF) atualiza o saldo sozinho.</div>
     <div id="cc-rinv" class="tiny" style="margin-top:6px;color:var(--grn)">Cofrinho: se o saldo de hoje for maior que o calculado, a diferença entra como “Rendimento do cofrinho”.</div></div>
@@ -2496,6 +2520,21 @@ function editarConta(c) {
   const vis = () => { const t = s.querySelector('#cc-tipo').value; s.querySelector('#cc-cart').style.display = t === 'cartao' || t === 'loja' ? '' : 'none'; s.querySelector('#cc-ben').style.display = t === 'beneficio' || t === 'conta' || t === 'invest' ? '' : 'none'; s.querySelector('#cc-inv').style.display = t === 'invest' ? '' : 'none';
     s.querySelector('#cc-rinv').style.display = t === 'invest' ? '' : 'none'; };
   s.querySelector('#cc-tipo').onchange = vis; vis();
+  const mov = guardar => {
+    const contas = S.contas.filter(x => x.tipo === 'conta').sort((a, z) => (a.id === b.daConta ? -1 : z.id === b.daConta ? 1 : 0));
+    const m = sheet(`<h2>${guardar ? 'Guardar em ' : 'Resgatar de '}${esc(b.nome)}</h2>
+      <div class="grid2"><div><label class="l">Valor (R$)</label><input class="f" id="mv-v" inputmode="decimal" placeholder="0,00"></div><div><label class="l">Data</label><input class="f" id="mv-d" type="date" value="${today()}"></div></div>
+      <label class="l">${guardar ? 'Saiu da conta' : 'Voltou para a conta'}</label><select class="f" id="mv-c">${contas.map(x => `<option value="${x.id}">${esc(x.nome)} · ${esc(pnome(x.dono))}</option>`).join('')}</select>
+      <div class="grid2" style="margin-top:14px"><button class="btn" data-fechar>Cancelar</button><button class="btn pri" id="mv-ok">Salvar</button></div>`);
+    m.querySelector('#mv-ok').onclick = () => { const v = Math.abs(P.money(m.querySelector('#mv-v').value)), d = m.querySelector('#mv-d').value, cid = m.querySelector('#mv-c').value, ct = conta(cid);
+      if (!v || !d || !ct) { toast('Preencha o valor e a data'); return; }
+      const agora = Date.now(), id = 'm:' + uid(), nome = (guardar ? 'Guardado em ' : 'Resgatado de ') + b.nome;
+      S.tx.push({ id, conta: cid, data: d, desc: nome, nome, valor: guardar ? -v : v, tipo: 'transf', cat: 'Investimento', sub: '', cofre: b.id, manual: true, criado: agora, upd: agora });
+      S.tx.push({ id: 'esp|' + id, conta: b.id, data: d, desc: (guardar ? 'Guardado de ' : 'Resgatado para ') + ct.nome, nome: (guardar ? 'Guardado de ' : 'Resgatado para ') + ct.nome, valor: guardar ? v : -v, tipo: 'transf', cat: 'Investimento', sub: '', criado: agora, upd: agora });
+      if (!b.daConta) b.daConta = cid;
+      save(); m.remove(); s.remove(); render(); toast(guardar ? 'Guardado' : 'Resgatado'); };
+  };
+  if (s.querySelector('#cc-guardar')) { s.querySelector('#cc-guardar').onclick = () => mov(true); s.querySelector('#cc-resgatar').onclick = () => mov(false); }
   if (!novo) s.querySelector('#cc-del').onclick = () => {
     const n = live().filter(t => t.conta === b.id).length;
     confirma(n ? `Excluir ${b.nome} e os ${n} lançamentos dela?` : `Excluir ${b.nome}?`, () => { S.contas = S.contas.filter(x => x !== c); marcaApagado('contas', c.id); S.tx.forEach(t => { if (t.conta === b.id) { t.del = true; t.upd = Date.now(); } }); save(); s.remove(); render(); }, 'Excluir');
