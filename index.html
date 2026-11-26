@@ -1703,16 +1703,19 @@ function conciliaFaturas() {
       if (!doPrint.length) for (const t of abertas) { if (soma - t.valor > A + 0.01) break; soma -= t.valor; baixa.push(t); }
       for (const t of baixa) { t.pagoEm = D; t.pagoPor = pg.id; delete t.aberto; }
       const dif = Math.round((A - soma) * 100) / 100, jid = c.id + '|juros|' + pg.id, ex = S.tx.find(x => x.id === jid);
-      const todas = abertas.length === baixa.length, venceu = baixa.some(t => t.venc < D);
+      const todas = abertas.length === baixa.length;
       // compras do PDF de pendentes: diferença = juros. Compras lidas de print: pode ser compra que não saiu no print
       const soPrint = !!doPrint.length;
-      // fatura que já veio paga no print está certa: só liga o pagamento, sem diferença
-      pg.fatura = soPrint ? { compras: Math.round(soma * 100) / 100, paga: true } : { compras: Math.round(soma * 100) / 100, dif: todas ? dif : 0, falta: todas ? 0 : abertas.filter(t => !baixa.includes(t)).reduce((a, t) => a - t.valor, 0) };
-      if (!soPrint && todas && dif > 0.01 && baixa.length) {
+      // compras pagas no print: valem como estão; se alguma foi paga depois do vencimento, o que o Pix tiver a mais é juros
+      const pagas = doPrint.concat(baixa), atrasou = pagas.filter(t => (t.pagoEm || D) > t.venc);
+      const ok = soPrint || todas;
+      pg.fatura = { compras: Math.round(soma * 100) / 100, dif: ok ? dif : 0, falta: ok ? 0 : abertas.filter(t => !baixa.includes(t)).reduce((a, t) => a - t.valor, 0), nAtraso: atrasou.length };
+      const venceu = atrasou.length > 0;
+      if (ok && dif > 0.01 && pagas.length) {
         // pagou mais que as compras: com compra vencida é juros; sem nada vencido, fica para você conferir
         const nj = venceu ? { desc: 'Juros por atraso ' + c.nome, nome: 'Juros por atraso', cat: 'Banco', sub: 'Juros' } : { desc: 'Diferença no pagamento ' + c.nome, nome: 'Pagou a mais que as compras', cat: '', sub: '' };
-        if (!pg.fatura.paga) pg.fatura.juros = venceu;
-        if (!ex) { S.tx.push(Object.assign({ id: jid, conta: c.id, data: D, valor: -dif, tipo: 'despesa', juros: pg.id, criado: agora, upd: agora }, nj)); mudou = true; }
+        pg.fatura.juros = venceu;
+        if (!ex) { S.tx.push(Object.assign({ id: jid, conta: c.id, data: D, pagoEm: D, valor: -dif, tipo: 'despesa', juros: pg.id, criado: agora, upd: agora }, nj)); mudou = true; }
         else if (!ex.travado && (ex.del || Math.abs(ex.valor + dif) > 0.004 || ex.desc !== nj.desc)) { Object.assign(ex, nj, { valor: -dif }); delete ex.del; ex.upd = agora; mudou = true; }
       } else if (ex && !ex.del && !ex.travado) { ex.del = true; ex.upd = agora; mudou = true; }
     }
@@ -1987,7 +1990,7 @@ function pagInfo(c) {
   const pg = live().filter(t => t.cartao === c.id).sort((a, b) => b.data.localeCompare(a.data))[0];
   const pp = c.pagaPor && conta(c.pagaPor);
   let h = pp ? `<div class="tiny" style="margin-top:8px">${ti('link', 14)} Ligado à conta ${esc(pp.nome)}</div>` : '';
-  if (pg) { const f = pg.fatura; h += `<div class="small" style="margin-top:8px">Último pagamento: <b>${esc(brl(-pg.valor))}</b> em ${dshort(pg.data)} pela conta ${esc((conta(pg.conta) || {}).nome || '')}${f && f.paga ? '' : f && f.dif > 0.01 ? ` · <b style="color:var(--red)">${esc(brl(f.dif))} ${f.juros ? 'de juros (tinha compra vencida)' : 'a mais que as compras: confira'}</b>` : f && f.falta > 0.01 ? ` · <span class="muted">quitou ${esc(brl(f.compras))} em compras; o resto continua em aberto</span>` : f && f.falta > 0.01 ? ` · <b style="color:var(--amb)">faltou ${esc(brl(f.falta))}</b>` : f ? ' · <span style="color:var(--grn)">bateu com as compras</span>' : ''}</div>`; }
+  if (pg) { const f = pg.fatura; h += `<div class="small" style="margin-top:8px">Último pagamento: <b>${esc(brl(-pg.valor))}</b> em ${dshort(pg.data)} pela conta ${esc((conta(pg.conta) || {}).nome || '')}${f && f.dif > 0.01 ? ` · <b style="color:var(--red)">${esc(brl(f.dif))} ${f.juros ? `de juros (${f.nAtraso} compra(s) pagas depois do vencimento)` : 'a mais que as compras: confira'}</b>` : f && f.falta > 0.01 ? ` · <span class="muted">quitou ${esc(brl(f.compras))} em compras; o resto continua em aberto</span>` : f && f.falta > 0.01 ? ` · <b style="color:var(--amb)">faltou ${esc(brl(f.falta))}</b>` : f ? ' · <span style="color:var(--grn)">bateu com as compras</span>' : ''}</div>`; }
   return h;
 }
 function rDividas() {
