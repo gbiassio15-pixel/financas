@@ -646,7 +646,7 @@ function seed() {
       entdivida: CATS_ENTDIV.map(([nome, e, cor]) => ({ nome, e, cor, subs: [], i: ICON_CAT[nome] })),
     },
     regras: P.SEED_RULES.map(r => Object.assign({ upd: 1 }, r)),
-    mig: 10, orc: {}, orcUpd: {}, tx: [], contratos: [], fixas: [], meiChaves: [], ultimoBackup: null, mud: 0,
+    mig: 11, orc: {}, orcUpd: {}, tx: [], contratos: [], fixas: [], meiChaves: [], ultimoBackup: null, mud: 0,
   };
 }
 function load() { try { const t = localStorage.getItem(KEY); return t ? JSON.parse(t) : null; } catch (e) { storageOk = false; return null; } }
@@ -670,6 +670,13 @@ function migra() {
       if (cl.cat === 'Investimento') { Object.assign(t, { tipo: 'transf', cat: 'Investimento', sub: '', upd: agora }); espelhaInvest(t, c, agora); }
       else if (cl.cat === 'Rendimentos' && !t.cat) Object.assign(t, { tipo: 'receita', cat: 'Rendimentos', sub: '', upd: agora }); }
     S.mig = 10; salvaLocal(); }
+  if (S.mig < 11) { const agora = Date.now(), byId = new Map(S.tx.map(t => [t.id, t]));
+    for (const t of S.tx) { if (t.del) continue;
+      if (t.espTransf && t.palpite) { t.del = true; t.upd = agora; const o = byId.get(t.espTransf); if (o && o.par === t.id) { delete o.par; delete o.palpite; o.upd = agora; } continue; }
+      if (t.peloValor && !t.travado) { delete t.peloValor; const o = t.par && byId.get(t.par); if (o) { delete o.par; delete o.peloValor; if (!o.travado) Object.assign(o, { tipo: o.valor < 0 ? 'despesa' : 'receita', cat: '', sub: '' }); o.upd = agora; }
+        delete t.par; Object.assign(t, { tipo: t.valor < 0 ? 'despesa' : 'receita', cat: '', sub: '', upd: agora }); continue; }
+      if (t.par && t.par !== 'fora' && !t.paraConta && !t.manual) { const o = byId.get(t.par); if (o && !o.espTransf && !o.paraConta && !o.manual) { delete t.par; delete o.par; t.upd = o.upd = agora; } } }
+    reaplicaRegras(); S.mig = 11; salvaLocal(); }
   P.meiChaves = S.meiChaves || [];
   try { const a = conciliaFaturas(), b = pareiaTransf(); if (a || b) salvaLocal(); } catch (e) { console.warn(e); }
 }
@@ -1554,10 +1561,13 @@ function editarTx(t) {
     <label class="l">Descrição</label><input class="f" id="ed-nome" value="${esc(base.nome || base.desc)}" placeholder="Padaria do bairro">
     <div class="grid2"><div><label class="l">Valor (R$)</label><input class="f" id="ed-val" inputmode="decimal" value="${valAbs ? String(valAbs.toFixed(2)).replace('.', ',') : ''}" placeholder="0,00"></div>
     <div><label class="l">Data</label><input class="f" id="ed-data" type="date" value="${base.data}"></div></div>
-    <label class="l">Entrada ou saída?</label><div class="seg" id="ed-sinal"><button class="${base.valor <= 0 ? 'on' : ''}" data-s="-1">Saiu dinheiro</button><button class="${base.valor > 0 ? 'on' : ''}" data-s="1">Entrou dinheiro</button></div>
-    <label class="l">Classificação</label><select class="f" id="ed-class">${opcoesClass(classVal(base))}</select>
+    <label class="l">Entrada ou saída?</label><div class="seg" id="ed-sinal"><button class="${base.valor <= 0 ? 'on' : ''}" data-s="-1">Saiu dinheiro</button><button class="${base.valor > 0 ? 'on' : ''}" data-s="1">Entrou dinheiro</button>${novo ? '<button data-s="0">Entre contas</button>' : ''}</div>
+    <div id="ed-tr" style="display:none"><div class="grid2"><div><label class="l">De (saiu de)</label><select class="f" id="ed-de">${S.contas.filter(c => ['conta', 'beneficio', 'invest'].includes(c.tipo)).map(c => `<option value="${c.id}" ${c.id === base.conta ? 'selected' : ''}>${esc(c.nome)} · ${esc(pnome(c.dono))}</option>`).join('')}</select></div>
+      <div><label class="l">Para (entrou em)</label><select class="f" id="ed-para"><option value="">Escolha</option>${S.contas.filter(c => ['conta', 'beneficio', 'invest'].includes(c.tipo)).map(c => `<option value="${c.id}">${esc(c.nome)} · ${esc(pnome(c.dono))}</option>`).join('')}</select></div></div>
+      <div class="tiny" style="margin-top:4px">Lança a saída numa conta e a entrada na outra, já ligadas. Não conta como gasto nem como entrada.</div></div>
+    <div id="ed-clw"><label class="l">Classificação</label><select class="f" id="ed-class">${opcoesClass(classVal(base))}</select></div>
     <label class="row small" id="ed-lembrar-w" style="margin-top:8px;display:none"><input type="checkbox" class="chk" id="ed-lembrar" checked> Usar sempre para “<span id="ed-lnome"></span>”</label>
-    <label class="l">Conta</label><select class="f" id="ed-conta">${opContas}</select>
+    <div id="ed-cw"><label class="l">Conta</label><select class="f" id="ed-conta">${opContas}</select></div>
     ${!novo && CONTA_TR.includes(c0.tipo) ? `<button class="btn full" id="ed-par" style="margin-top:10px;${base.tipo === 'transf' ? '' : 'display:none'}">${ti('arrows-exchange', 16)} ${base.par || base.cofre ? 'Trocar a outra conta (conta, cofrinho, poupança)' : 'Escolher a outra conta (conta, cofrinho, poupança)'}</button>` : ''}
     <div id="ed-venc-w" style="${c0.tipo === 'cartao' || c0.tipo === 'loja' ? '' : 'display:none'}"><div class="grid2"><div><label class="l">${novo ? '1º vencimento' : 'Vencimento'}</label><input class="f" id="ed-venc" type="date" value="${base.venc || ''}"></div>
     ${novo ? `<div><label class="l">Parcelas</label><input class="f" id="ed-np" inputmode="numeric" value="1"></div>` : ''}</div>
@@ -1566,7 +1576,8 @@ function editarTx(t) {
   let sinal = base.valor > 0 ? 1 : -1;
   const marcaSinal = v => { sinal = v; s.querySelectorAll('#ed-sinal button').forEach(x => x.classList.toggle('on', +x.dataset.s === v)); };
   // entrou/saiu e a classificação andam juntas: entrada vira "Entrada", saída vira "Despesa"
-  s.querySelectorAll('#ed-sinal button').forEach(b => b.onclick = () => { marcaSinal(+b.dataset.s); const c = s.querySelector('#ed-class');
+  const modoTr = on => { s.querySelector('#ed-tr').style.display = on ? '' : 'none'; s.querySelector('#ed-clw').style.display = on ? 'none' : ''; s.querySelector('#ed-cw').style.display = on ? 'none' : ''; const vw = s.querySelector('#ed-venc-w'); if (on && vw) vw.style.display = 'none'; };
+  s.querySelectorAll('#ed-sinal button').forEach(b => b.onclick = () => { marcaSinal(+b.dataset.s); modoTr(sinal === 0); if (sinal === 0) return; const c = s.querySelector('#ed-class');
     if (sinal > 0 && /^despesa\|/.test(c.value)) c.value = 'receita||'; else if (sinal < 0 && /^(receita|entdivida)\|/.test(c.value)) c.value = 'despesa||';
     c.dispatchEvent(new Event('change')); });
   const cls = s.querySelector('#ed-class');
@@ -1581,6 +1592,18 @@ function editarTx(t) {
       delete base.par; delete base.cofre; base.upd = Date.now(); resolverTransf([base]); }; }
   if (!novo) s.querySelector('#ed-del').onclick = () => confirma('Excluir este lançamento?', () => { excluirTx(base); save(); s.remove(); render(); toast('Lançamento excluído'); }, 'Excluir');
   s.querySelector('#ed-ok').onclick = () => {
+    if (novo && sinal === 0) {
+      const v = Math.abs(P.money(s.querySelector('#ed-val').value)), de = conta(s.querySelector('#ed-de').value), pa = conta(s.querySelector('#ed-para').value), d = s.querySelector('#ed-data').value || today();
+      if (!v) { toast('Preencha o valor'); return; } if (!pa) { toast('Escolha a conta de destino'); return; } if (pa === de) { toast('As contas precisam ser diferentes'); return; }
+      const agora = Date.now(), nm = s.querySelector('#ed-nome').value.trim(), base2 = { data: d, tipo: 'transf', cat: '', sub: '', manual: true, travado: true, criado: agora, upd: agora };
+      const ia = 'm:' + uid(), ib = 'm:' + uid();
+      const a = Object.assign({}, base2, { id: ia, conta: de.id, valor: -v, desc: nm || 'Para ' + pa.nome, nome: nm || 'Para ' + pa.nome + ' · ' + pnome(pa.dono) });
+      const b = Object.assign({}, base2, { id: ib, conta: pa.id, valor: v, desc: nm || 'De ' + de.nome, nome: nm || 'De ' + de.nome + ' · ' + pnome(de.dono) });
+      if (pa.tipo === 'invest') { a.cat = b.cat = 'Investimento'; a.cofre = pa.id; b.id = 'esp|' + ia; if (!pa.daConta && de.tipo === 'conta') pa.daConta = de.id; }
+      else if (de.tipo === 'invest') { a.cat = b.cat = 'Investimento'; b.cofre = de.id; a.id = 'esp|' + ib; }
+      else { a.par = b.id; b.par = a.id; }
+      S.tx.push(a, b); save(); s.remove(); render(); toast('Transferência lançada'); return;
+    }
     const v = P.money(s.querySelector('#ed-val').value);
     const nome = s.querySelector('#ed-nome').value.trim();
     if (!nome || isNaN(v) || v === 0) { toast('Preencha a descrição e o valor'); return; }
@@ -1608,6 +1631,7 @@ function editarTx(t) {
       for (const o of live()) if (o !== t2 && P.norm(o.nome) === k && classVal(o) !== cls.value && !o.travado) { aplicaClass(o, cls.value); o.upd = Date.now(); n++; }
     }
     t2.travado = true;
+    if (!novo && t2.manual && t2.tipo === 'transf') { const o = S.tx.find(x => !x.del && (x.id === t2.par || x.id === 'esp|' + t2.id || 'esp|' + x.id === t2.id)); if (o && o.manual !== false) { o.valor = -t2.valor; o.data = t2.data; o.upd = Date.now(); } }
     save(); s.remove(); render(); toast(n ? `Salvo. ${n} lançamento(s) iguais atualizados` : 'Salvo');
   };
 }
@@ -1693,7 +1717,9 @@ function adivinhaConta(res) {
 function montaPrevia(res, contaId, nomeArq) {
   const c = conta(contaId);
   // apagado em "Apagar dados" pode ser importado de novo; apagado um a um, não
-  const ids = new Set(S.tx.filter(t => !(t.del && t.zerado)).map(t => t.id));
+  const ids = new Set(S.tx.filter(t => !t.del).map(t => t.id));
+  // excluídos antes: aparecem na prévia, desmarcados, para trazer de volta se quiser
+  const excl = new Set(S.tx.filter(t => t.del && !t.zerado && !/^(esp|tr|jr)\|/.test(t.id) && !t.juros).map(t => t.id));
   const naLoja = c && (c.tipo === 'loja' || c.tipo === 'cartao') ? live().filter(t => t.conta === contaId && t.venc) : [];
   const usados = new Set();
   const linhas = res.rows.map(r => {
@@ -1706,7 +1732,8 @@ function montaPrevia(res, contaId, nomeArq) {
     if (!ids.has(id) && r.venc && naLoja.length) { const ig = naLoja.find(t => !usados.has(t.id) && t.venc === r.venc && Math.abs(t.valor - r.valor) < 0.011); if (ig) { usados.add(ig.id); ids.add(id); r._igual = ig.id; } }
     const cl = P.classify(r, c, S.regras, S.pessoas);
     const cln = P.clean(r.desc);
-    return { r, id, dup: ids.has(id), sel: !ids.has(id), tipo: cl.tipo, cat: cl.cat, sub: cl.sub, auto: cl.auto, espelho: cl.espelho, nome: cln.nome, meio: cln.meio, parc: cln.parc };
+    const ex = !ids.has(id) && excl.has(id);
+    return { r, id, dup: ids.has(id), excluido: ex, sel: !ids.has(id) && !ex, tipo: cl.tipo, cat: cl.cat, sub: cl.sub, auto: cl.auto, espelho: cl.espelho, nome: cln.nome, meio: cln.meio, parc: cln.parc };
   });
   // estorno/Pix no crédito do Nubank: o lançamento ":reversal" e o original (mesmo código) não contam
   const porFit = new Map(linhas.map(l => [String(l.r.fitid), l]));
@@ -1751,7 +1778,7 @@ function rImportar() {
     return;
   }
   const L = I.linhas, c = conta(I.contaId);
-  const novos = L.filter(l => !l.dup), sel = L.filter(l => l.sel), rev = novos.filter(l => l.tipo === 'despesa' && !l.cat);
+  const novos = L.filter(l => !l.dup && !l.excluido), sel = L.filter(l => l.sel), rev = novos.filter(l => l.tipo === 'despesa' && !l.cat), exL = L.filter(l => l.excluido);
   const opContas = S.contas.map(x => `<option value="${x.id}" ${x.id === I.contaId ? 'selected' : ''}>${esc(x.nome)} · ${esc(donoNome(x.dono).split(' ')[0])}</option>`).join('');
   h += `<div class="card"><div class="row" style="gap:12px"><div class="ic" style="background:var(--accbg);color:var(--acc)">${ic('file', 'width="20" height="20"')}</div><div class="mid" style="flex:1;min-width:0"><div class="t" style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(I.nomeArq)}</div><div class="s small muted">${esc(I.res.formato)}${I.res.banco ? ' · ' + esc(I.res.banco) : ' · formato genérico'} · ${L.length} lançamento(s)</div></div></div>
     <label class="l">Importar na conta</label><select class="f" id="imp-conta"><option value="">Escolha a conta…</option>${opContas}</select>
@@ -1759,13 +1786,14 @@ function rImportar() {
     ${I.res.prazo ? `<div class="banner acc" style="margin:10px 0 0">Data da compra = vencimento − ${I.res.prazo} dias.</div>` : ''}
     ${I.res.aviso ? `<div class="banner ${I.res.confira ? 'amb' : 'acc'}" style="margin:10px 0 0">${esc(I.res.aviso)}</div>` : ''}
     ${I.res.formato === 'Imagem' && !I.res.aviso ? `<div class="banner amb" style="margin:10px 0 0">Lido de imagem: confira nomes e valores antes de importar.</div>` : ''}
-    <div class="row wrap" style="gap:6px;margin-top:12px"><span class="tag acc">${novos.length} novos</span>${L.length - novos.length ? `<span class="tag">${L.length - novos.length} já importados</span>` : ''}${rev.length ? `<span class="tag amb">${rev.length} sem categoria</span>` : ''}</div>
+    ${exL.length ? `<div class="banner amb" style="margin:10px 0 0;align-items:center">${ti('trash', 18)} <span style="flex:1">${exL.length} lançamento(s) deste arquivo foram excluídos por vocês. Ficam de fora, a não ser que queira de volta.</span><button class="btn sm" id="imp-volta">${exL.every(l => l.sel) ? 'Deixar de fora' : 'Trazer de volta'}</button></div>` : ''}
+    <div class="row wrap" style="gap:6px;margin-top:12px"><span class="tag acc">${novos.length} novos</span>${L.length - novos.length - exL.length ? `<span class="tag">${L.length - novos.length - exL.length} já importados</span>` : ''}${exL.length ? `<span class="tag red">${exL.length} excluídos antes</span>` : ''}${rev.length ? `<span class="tag amb">${rev.length} sem categoria</span>` : ''}</div>
   </div>
   <div class="card" style="padding:6px 14px">${L.map((l, i) => {
     const ci = catInfo(l.tipo, l.cat);
     return `<div class="prow ${l.dup ? 'dup' : ''}"><div class="row" style="gap:10px;align-items:flex-start"><input type="checkbox" class="chk" data-isel="${i}" ${l.sel ? 'checked' : ''} ${l.dup ? 'disabled' : ''} style="margin-top:2px">
       <div style="flex:1;min-width:0"><div class="row between" style="gap:8px"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px"><span style="color:${ci.cor};display:inline-flex">${ti(ci.i || ICON_CAT[l.cat] || ({ transf: 'arrows-exchange', pagdivida: 'credit-card-pay', neutro: 'player-pause' })[l.tipo] || (l.tipo === 'receita' ? 'coin' : 'help-circle'), 17)}</span>${esc(l.nome)}</b><b class="${l.r.valor > 0 ? 'pos' : ''}" style="white-space:nowrap">${esc(brl(l.r.valor))}</b></div>
-      <div class="tiny">${dshort(l.r.data)}${l.meio ? ' · ' + esc(l.meio) : ''}${l.r.venc ? ' · vence ' + dshort(l.r.venc) : ''}${l.dup ? ' · já importado' : ''}${l.auto === 'casal' ? ' · entre vocês' : ''}${l.auto === 'devol' ? ' · Pix devolvido' : ''}${l.auto === 'estorno' ? ' · estornado' : ''}${l.auto === 'limite' ? ' · limite do cartão' : ''}${l.parc ? ' · parcela ' + l.parc : ''}${l.confira ? ' · <b style="color:var(--amb)">confira o que foi</b>' : ''}${l.espelho === 'invest' ? ' · vai para o investimento' : ''}</div>
+      <div class="tiny">${dshort(l.r.data)}${l.meio ? ' · ' + esc(l.meio) : ''}${l.r.venc ? ' · vence ' + dshort(l.r.venc) : ''}${l.dup ? ' · já importado' : ''}${l.excluido ? ' · <b style="color:var(--red)">excluído antes</b>' : ''}${l.auto === 'casal' ? ' · entre vocês' : ''}${l.auto === 'devol' ? ' · Pix devolvido' : ''}${l.auto === 'estorno' ? ' · estornado' : ''}${l.auto === 'limite' ? ' · limite do cartão' : ''}${l.parc ? ' · parcela ' + l.parc : ''}${l.confira ? ' · <b style="color:var(--amb)">confira o que foi</b>' : ''}${l.espelho === 'invest' ? ' · vai para o investimento' : ''}</div>
       ${l.dup ? '' : `<div class="row" style="gap:6px"><select class="f" data-icls="${i}" style="flex:1">${opcoesClass(classVal(l))}</select>${I.res.formato === 'Imagem' ? `<button class="btn sm" data-iedit="${i}" style="margin-top:6px">Corrigir</button>` : ''}</div>`}</div></div></div>`; }).join('')}</div>
   <div style="position:sticky;bottom:calc(env(safe-area-inset-bottom) + 66px);display:grid;grid-template-columns:1fr 2fr;gap:10px;padding:10px 0;margin:0 -16px;padding-left:16px;padding-right:16px;background:linear-gradient(to top,var(--bg) 75%,transparent)">
     <button class="btn" id="imp-cancel" style="background:var(--card);box-shadow:var(--sh)">Cancelar</button><button class="btn pri" id="imp-ok">Importar ${sel.length}</button></div>`;
@@ -1782,6 +1810,7 @@ function rImportar() {
     s.querySelector('#ie-ok').onclick = () => { const v = P.money(s.querySelector('#ie-v').value); if (isNaN(v) || !v) { toast('Valor inválido'); return; }
       l.nome = s.querySelector('#ie-n').value.trim() || l.nome; l.r.desc = l.nome; l.r.valor = Math.sign(l.r.valor || -1) * Math.abs(v); l.r.data = s.querySelector('#ie-d').value || l.r.data; if (l.r.venc && I.res.prazo) l.r.venc = P.addDays(l.r.data, I.res.prazo); s.remove(); rImportar(); };
   });
+  if ($('#imp-volta')) $('#imp-volta').onclick = () => { const todos = exL.every(l => l.sel); for (const l of exL) l.sel = !todos; rImportar(); };
   document.querySelectorAll('[data-isel]').forEach(x => x.onchange = () => { L[+x.dataset.isel].sel = x.checked; $('#imp-ok').textContent = 'Importar ' + L.filter(l => l.sel).length; });
   document.querySelectorAll('[data-icls]').forEach(x => x.onchange = () => {
     const l = L[+x.dataset.icls]; const v = x.value; const antes = classVal(l);
@@ -1807,7 +1836,7 @@ function confirmaImport() {
     if (l.r.pagoEm) t.pagoEm = l.r.pagoEm; else if (l.r.aberto) t.aberto = true;
     if (c.tipo === 'cartao' || c.tipo === 'loja') t.venc = l.r.venc || vencCartao(c, t.data) || undefined;
     if (l.auto === 'manual') t.travado = true;
-    const velho = S.tx.findIndex(x => x.id === t.id && x.del && x.zerado);
+    const velho = S.tx.findIndex(x => x.id === t.id && x.del);
     if (velho >= 0) S.tx[velho] = t; else S.tx.push(t); n++;
     if (l.parTx) { const o = S.tx.find(x => x.id === l.parTx); if (o && !o.travado) Object.assign(o, { tipo: 'neutro', cat: '', sub: '', upd: agora }); }
     if (l.espelho === 'invest' && t.tipo === 'transf' && c.tipo !== 'invest') { const nv = espelhaInvest(t, c, agora); if (nv) criouInv = nv; }
@@ -1863,28 +1892,28 @@ function pareiaTransf() {
   // acha o par de verdade: mesmo valor com sinal trocado, em outra conta de vocês, até 2 dias (substitui o lançado pelo app)
   const livre = t => !t.par || ehEsp(t.par);
   const outros = todos.filter(t => !t.del && CONTA_TR.includes((conta(t.conta) || {}).tipo) && !t.espTransf && !t.cofre && !t.contrato && !t.cartao && !/^esp\|/.test(t.id) && t.cat !== 'Investimento');
+  const combina = (a, b) => { // a pista do nome tem que bater com o dono da outra conta
+    const pa = pistaPix(a), pb = pistaPix(b), ca = conta(a.conta), cb = conta(b.conta);
+    if (pa.mei || pb.mei) return false;
+    if (pa.dono && cb.dono !== pa.dono && cb.dono !== 'casa') return false;
+    if (pb.dono && ca.dono !== pb.dono && ca.dono !== 'casa') return false;
+    if (pa.banco && !P.norm(cb.banco || cb.nome).includes(pa.banco)) return false;
+    if (pb.banco && !P.norm(ca.banco || ca.nome).includes(pb.banco)) return false;
+    return true; };
   for (const a of T) {
     if (!livre(a) || a.par === 'fora') continue;
-    let best = null, bd = 9;
-    for (const b of outros) { if (b === a || !livre(b) || b.par === 'fora' || b.conta === a.conta || Math.abs(a.valor + b.valor) > 0.006) continue;
-      // a outra ponta pode estar como entrada/despesa (extrato sem o nome): vale pelo valor
-      if (!['transf', 'receita', 'despesa', 'neutro'].includes(b.tipo) || (b.tipo === 'neutro' && !/PIX|TRANSF/.test(P.norm(b.desc)))) continue;
-      const d = Math.abs(P.diffDias(a.data, b.data)); if (d > 2) continue;
-      const pref = (b.tipo === 'transf' ? 0 : nomeDaFamilia(b) ? 0.3 : 0.6) + d + (a.paraConta && a.paraConta !== b.conta ? 0.3 : 0); if (pref < bd) { bd = pref; best = b; } }
-    if (!best) continue;
+    const cands = outros.filter(b => b !== a && livre(b) && b.par !== 'fora' && b.conta !== a.conta && Math.abs(a.valor + b.valor) <= 0.006
+      && (b.tipo === 'transf' || ((b.tipo === 'receita' || b.tipo === 'despesa') && nomeDaFamilia(b) && !b.travado))
+      && Math.abs(P.diffDias(a.data, b.data)) <= 1 && combina(a, b));
+    if (!cands.length) continue;
+    const dia = cands.filter(b => b.data === a.data), pool = dia.length ? dia : cands;
+    if (pool.length > 1) continue; // mais de uma possibilidade: não adivinha
+    const best = pool[0];
+    // e a outra ponta também não pode ter outra opção igual
+    if (T.filter(x => x !== a && livre(x) && x.par !== 'fora' && x.conta !== best.conta && Math.abs(x.valor + best.valor) <= 0.006 && x.data === a.data && combina(x, best)).length) continue;
     solta(a); solta(best);
     a.par = best.id; best.par = a.id; for (const x of [a, best]) { delete x.paraConta; delete x.palpite; x.upd = agora; }
     if (best.tipo !== 'transf' && !best.travado) Object.assign(best, { tipo: 'transf', cat: '', sub: '' });
-    mudou = true;
-  }
-  const ehPix = t => /\bPIX\b|TRANSF|\bTED\b|\bDOC\b/.test(P.norm(t.desc || ''));
-  const soltos = outros.filter(t => !t.par && (t.tipo === 'receita' || t.tipo === 'despesa') && !t.travado && ehPix(t) && !pistaPix(t).mei);
-  for (const a of soltos.filter(t => t.valor < 0)) {
-    if (a.par) continue;
-    const c = soltos.filter(b => !b.par && b.conta !== a.conta && Math.abs(a.valor + b.valor) < 0.006 && Math.abs(P.diffDias(a.data, b.data)) <= 1);
-    if (c.length !== 1) continue; // só quando não há dúvida
-    const b = c[0]; a.par = b.id; b.par = a.id;
-    for (const x of [a, b]) { Object.assign(x, { tipo: 'transf', cat: '', sub: '', upd: agora }); x.peloValor = true; }
     mudou = true;
   }
   // sem par: descobre a conta pela pista do extrato (agência/conta já vista, banco, nome) e pelo histórico
@@ -1897,12 +1926,9 @@ function pareiaTransf() {
     const c0 = conta(a.conta), pi = pistaPix(a);
     if (pi.mei) continue; // dinheiro do MEI: conta que o app não acompanha
     let dest = pi.sig && aprendido[pi.sig];
-    if (!dest) {
-      const dono = pi.dono || c0.dono;
-      let cands = S.contas.filter(c => CONTA_TR.includes(c.tipo) && c.dono === dono && c.id !== a.conta);
-      if (pi.banco) cands = cands.filter(c => P.norm(c.banco || c.nome).includes(pi.banco));
+    if (!dest && pi.dono && pi.banco) {
+      const cands = S.contas.filter(c => CONTA_TR.includes(c.tipo) && c.dono === pi.dono && c.id !== a.conta && P.norm(c.banco || c.nome).includes(pi.banco));
       if (cands.length === 1) dest = cands[0].id;
-      else { const h = hist[a.conta + '>' + dono + (a.valor < 0 ? '-' : '+')]; if (h) { const top = Object.entries(h).sort((x, y) => y[1] - x[1]); if (top.length && (top.length === 1 || top[0][1] >= 2 * top[1][1]) && (!pi.banco || cands.some(c => c.id === top[0][0]))) dest = top[0][0]; } }
     }
     const atual = a.par && byId.get(a.par);
     if (!dest) { if (atual && atual.palpite) { atual.del = true; atual.upd = agora; delete a.par; delete a.paraConta; delete a.palpite; mudou = true; } continue; }
@@ -1959,7 +1985,8 @@ function conciliaFaturas() {
   // só cartões em que cada compra tem o seu vencimento (BônusCred)
   for (const c of S.contas.filter(c => c.prazo)) {
     const itens = live().filter(t => t.conta === c.id && t.valor < 0 && t.venc && !t.juros);
-    for (const t of itens) if (t.pagoPor) { delete t.pagoPor; delete t.pagoEm; t.aberto = true; t._r = 1; }
+    const estado = t => (t.pagoPor || '') + '|' + (t.pagoEm || '') + '|' + (t.aberto ? 1 : 0), antes = new Map(itens.map(t => [t, estado(t)]));
+    for (const t of itens) if (t.pagoPor) { delete t.pagoPor; delete t.pagoEm; t.aberto = true; }
     for (const pg of live().filter(t => t.cartao === c.id && t.valor < 0).sort((a, b) => a.data.localeCompare(b.data))) {
       const D = pg.data, A = -pg.valor;
       const doPrint = itens.filter(t => t.pagoEm && !t.pagoPor && t.pagoEm >= P.addDays(D, -3) && t.pagoEm <= P.addDays(D, 3));
@@ -1988,7 +2015,8 @@ function conciliaFaturas() {
     }
     const vivos = new Set(live().filter(t => t.cartao === c.id).map(t => t.id));
     for (const j of live().filter(t => t.conta === c.id && t.juros && !vivos.has(t.juros) && !t.travado)) { j.del = true; j.upd = agora; mudou = true; }
-    for (const t of itens) { if (t._r && !(t.pagoPor)) { /* voltou a ficar em aberto */ } if (t._r) { delete t._r; t.upd = agora; mudou = true; } else if (t.pagoPor) { t.upd = agora; mudou = true; } }
+    // só marca como alterado o que mudou de verdade (evita reenviar tudo na sincronização)
+    for (const t of itens) if (estado(t) !== antes.get(t)) { t.upd = agora; mudou = true; }
   }
   return mudou;
 }
@@ -2641,14 +2669,14 @@ async function salvarBackup() {
     const add = (nome, rows) => X.utils.book_append_sheet(wb, X.utils.json_to_sheet(rows.length ? rows : [{}]), nome);
     add('Lançamentos', S.tx.slice().sort((a, b) => a.data.localeCompare(b.data)).map(t => { const c = conta(t.conta) || {}; return {
       Data: t.data, Descrição: t.nome || t.desc, Valor: t.valor, Tipo: TIPOS[t.tipo] || t.tipo, Categoria: t.cat || '', Subcategoria: t.sub || '', Conta: c.nome || '', De: donoNome(c.dono),
-      Vencimento: t.venc || '', 'No extrato': t.desc || '', id: t.id, conta_id: t.conta, tipo_id: t.tipo, meio: t.meio || '', criado: t.criado || 0, upd: t.upd || 0, excluido: t.del ? 1 : 0, travado: t.travado ? 1 : 0, parc: t.parc || '', contrato: t.contrato || '', pagoEm: t.pagoEm || '', aberto: t.aberto ? 1 : 0 }; }));
-    add('Contas', S.contas.map(c => ({ id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Banco: c.banco || '', Fechamento: c.fech || '', Vencimento: c.venc || '', PrazoDias: c.prazo || '', SaldoInicial: c.saldoIni || 0, SaldoRef: c.saldoRef ? c.saldoRef.valor : '', SaldoRefData: c.saldoRef ? c.saldoRef.data : '', chaves: (c.chaves || []).join(' | '), icone: c.icone || '', pagaPor: c.pagaPor || '', pagChaves: (c.pagChaves || []).join(' | '), daConta: c.daConta || '', upd: c.upd || 0 })));
-    add('Dívidas', S.contratos.map(c => ({ id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Parcela: c.parcela, Total: c.total, Pagas: c.pagas, Dia: c.dia, Banco: c.banco || '', Numero: c.numero || '', Liberado: c.liberado || '', TotalPagar: c.totalPagar || '', Juros: c.juros || '', Contratado: c.contratado || '', parcelas: c.parcelas ? JSON.stringify(c.parcelas) : '', upd: c.upd || 0 })));
-    add('Fixas', (S.fixas || []).map(f => ({ id: f.id, Nome: f.nome, Tipo: f.tipo, Valor: f.valor, Dia: f.dia, Categoria: f.cat || '', Subcategoria: f.sub || '', De: f.dono, Texto: f.chave || '', upd: f.upd || 0 })));
+      Vencimento: t.venc || '', 'No extrato': t.desc || '', id: t.id, conta_id: t.conta, tipo_id: t.tipo, meio: t.meio || '', criado: t.criado || 0, upd: t.upd || 0, excluido: t.del ? 1 : 0, travado: t.travado ? 1 : 0, parc: t.parc || '', contrato: t.contrato || '', pagoEm: t.pagoEm || '', aberto: t.aberto ? 1 : 0, _dados: JSON.stringify(t) }; }));
+    add('Contas', S.contas.map(c => ({ _dados: JSON.stringify(c), id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Banco: c.banco || '', Fechamento: c.fech || '', Vencimento: c.venc || '', PrazoDias: c.prazo || '', SaldoInicial: c.saldoIni || 0, SaldoRef: c.saldoRef ? c.saldoRef.valor : '', SaldoRefData: c.saldoRef ? c.saldoRef.data : '', chaves: (c.chaves || []).join(' | '), icone: c.icone || '', pagaPor: c.pagaPor || '', pagChaves: (c.pagChaves || []).join(' | '), daConta: c.daConta || '', upd: c.upd || 0 })));
+    add('Dívidas', S.contratos.map(c => ({ _dados: JSON.stringify(Object.assign({}, c, { parcelas: undefined })), id: c.id, Nome: c.nome, De: c.dono, Tipo: c.tipo, Parcela: c.parcela, Total: c.total, Pagas: c.pagas, Dia: c.dia, Banco: c.banco || '', Numero: c.numero || '', Liberado: c.liberado || '', TotalPagar: c.totalPagar || '', Juros: c.juros || '', Contratado: c.contratado || '', parcelas: c.parcelas ? JSON.stringify(c.parcelas) : '', upd: c.upd || 0 })));
+    add('Fixas', (S.fixas || []).map(f => ({ _dados: JSON.stringify(f), id: f.id, Nome: f.nome, Tipo: f.tipo, Valor: f.valor, Dia: f.dia, Categoria: f.cat || '', Subcategoria: f.sub || '', De: f.dono, Texto: f.chave || '', upd: f.upd || 0 })));
     add('Categorias', ['despesa', 'receita', 'entdivida'].flatMap(tp => S.cats[tp].map(c => ({ tipo: tp, Nome: c.nome, Emoji: c.e, Cor: c.cor, Subcategorias: c.subs.join(' | '), icone: c.i || '', icones_sub: JSON.stringify(c.si || {}), Orçamento: S.orc[c.nome] || '', orc_upd: (S.orcUpd || {})[c.nome] || 0 }))));
     add('Regras', S.regras.filter(r => r.user).map(r => ({ Texto: r.k, Tipo: r.tipo, Categoria: r.cat || '', Subcategoria: r.sub || '', upd: r.upd || 0 })));
-    add('Pessoas', S.pessoas.map(p => ({ id: p.id, Nome: p.nome, Nomes_no_extrato: p.aliases.join(' | ') })));
-    add('Info', [{ app: 'GeMa', versao: 3, salvo_por: S.eu, salvo_em: new Date().toISOString(), mei: (S.meiChaves || []).join(' | '), apagados: JSON.stringify(S.apagados || {}) }]);
+    add('Pessoas', S.pessoas.map(p => ({ id: p.id, Nome: p.nome, Nomes_no_extrato: p.aliases.join(' | '), Email: p.email || '', _dados: JSON.stringify(p) })));
+    add('Info', [{ app: 'GeMa', versao: 4, catsUpd: S.catsUpd || 0, pessoasUpd: S.pessoasUpd || 0, salvo_por: S.eu, salvo_em: new Date().toISOString(), mei: (S.meiChaves || []).join(' | '), apagados: JSON.stringify(S.apagados || {}) }]);
     const out = X.write(wb, { type: 'array', bookType: 'xlsx' });
     const nome = 'gema-' + P.norm(donoNome(S.eu).split(' ')[0]).toLowerCase() + '-' + today() + '.xlsx';
     const file = new File([out], nome, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -2670,16 +2698,17 @@ async function lerBackup(file) {
   const sh = n => wb.Sheets[n] ? X.utils.sheet_to_json(wb.Sheets[n], { defval: '' }) : [];
   if (!wb.Sheets['Lançamentos'] || !wb.Sheets['Contas']) throw new Error('Esse arquivo não é um backup deste app');
   const str = v => v == null ? '' : String(v);
-  const tx = sh('Lançamentos').filter(r => r.id).map(r => ({ id: str(r.id), conta: str(r.conta_id), data: str(r.Data).slice(0, 10), nome: str(r['Descrição']), desc: str(r['No extrato']) || str(r['Descrição']), valor: +r.Valor || 0, tipo: str(r.tipo_id) || 'despesa', cat: str(r.Categoria), sub: str(r.Subcategoria), venc: str(r.Vencimento) || undefined, meio: str(r.meio), criado: +r.criado || 0, upd: +r.upd || 0, del: +r.excluido === 1 || undefined, travado: +r.travado === 1 || undefined, parc: str(r.parc) || undefined, contrato: str(r.contrato) || undefined, pagoEm: str(r.pagoEm) || undefined, aberto: +r.aberto === 1 || undefined }));
-  const contas = sh('Contas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), banco: str(r.Banco), fech: +r.Fechamento || null, venc: +r.Vencimento || null, prazo: +r.PrazoDias || null, saldoIni: +r.SaldoInicial || 0, saldoRef: r.SaldoRefData !== '' && r.SaldoRefData != null && r.SaldoRef !== '' ? { valor: +r.SaldoRef || 0, data: str(r.SaldoRefData).slice(0, 10) } : undefined, chaves: str(r.chaves).split(' | ').filter(Boolean), icone: str(r.icone) || undefined, pagaPor: str(r.pagaPor) || undefined, pagChaves: r.pagChaves != null ? str(r.pagChaves).split(' | ').filter(Boolean) : undefined, daConta: str(r.daConta) || undefined, upd: +r.upd || 0 }));
+  const cheio = (r, base) => { if (!r._dados) return base; try { const o = JSON.parse(r._dados); return Object.assign(base, o); } catch (e) { return base; } };
+  const tx = sh('Lançamentos').filter(r => r.id).map(r => cheio(r, { id: str(r.id), conta: str(r.conta_id), data: str(r.Data).slice(0, 10), nome: str(r['Descrição']), desc: str(r['No extrato']) || str(r['Descrição']), valor: +r.Valor || 0, tipo: str(r.tipo_id) || 'despesa', cat: str(r.Categoria), sub: str(r.Subcategoria), venc: str(r.Vencimento) || undefined, meio: str(r.meio), criado: +r.criado || 0, upd: +r.upd || 0, del: +r.excluido === 1 || undefined, travado: +r.travado === 1 || undefined, parc: str(r.parc) || undefined, contrato: str(r.contrato) || undefined, pagoEm: str(r.pagoEm) || undefined, aberto: +r.aberto === 1 || undefined }));
+  const contas = sh('Contas').filter(r => r.id).map(r => cheio(r, { id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), banco: str(r.Banco), fech: +r.Fechamento || null, venc: +r.Vencimento || null, prazo: +r.PrazoDias || null, saldoIni: +r.SaldoInicial || 0, saldoRef: r.SaldoRefData !== '' && r.SaldoRefData != null && r.SaldoRef !== '' ? { valor: +r.SaldoRef || 0, data: str(r.SaldoRefData).slice(0, 10) } : undefined, chaves: str(r.chaves).split(' | ').filter(Boolean), icone: str(r.icone) || undefined, pagaPor: str(r.pagaPor) || undefined, pagChaves: r.pagChaves != null ? str(r.pagChaves).split(' | ').filter(Boolean) : undefined, daConta: str(r.daConta) || undefined, upd: +r.upd || 0 }));
   const json = v => { try { return v ? JSON.parse(v) : undefined; } catch (e) { return undefined; } };
-  const contratos = sh('Dívidas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), parcela: +r.Parcela || 0, total: +r.Total || 0, pagas: +r.Pagas || 0, dia: +r.Dia || 1,
+  const contratos = sh('Dívidas').filter(r => r.id).map(r => cheio(r, { id: str(r.id), nome: str(r.Nome), dono: str(r.De), tipo: str(r.Tipo), parcela: +r.Parcela || 0, total: +r.Total || 0, pagas: +r.Pagas || 0, dia: +r.Dia || 1,
     banco: str(r.Banco) || undefined, numero: str(r.Numero) || undefined, liberado: +r.Liberado || undefined, totalPagar: +r.TotalPagar || undefined, juros: +r.Juros || undefined, contratado: str(r.Contratado) || undefined, parcelas: json(str(r.parcelas)), upd: +r.upd || 0 }));
-  const fixas = sh('Fixas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), tipo: str(r.Tipo) || 'despesa', valor: +r.Valor || 0, dia: +r.Dia || 1, cat: str(r.Categoria), sub: str(r.Subcategoria), dono: str(r.De), chave: str(r.Texto), upd: +r.upd || 0 }));
+  const fixas = sh('Fixas').filter(r => r.id).map(r => cheio(r, { id: str(r.id), nome: str(r.Nome), tipo: str(r.Tipo) || 'despesa', valor: +r.Valor || 0, dia: +r.Dia || 1, cat: str(r.Categoria), sub: str(r.Subcategoria), dono: str(r.De), chave: str(r.Texto), upd: +r.upd || 0 }));
   const cats = { despesa: [], receita: [], entdivida: [] }, orc = {}, orcUpd = {};
   for (const r of sh('Categorias')) { if (!cats[r.tipo]) continue; cats[r.tipo].push({ nome: str(r.Nome), e: '', cor: str(r.Cor), subs: str(r.Subcategorias).split(' | ').filter(Boolean), i: str(r.icone) || ICON_CAT[str(r.Nome)] || 'tag', si: (() => { try { return JSON.parse(str(r.icones_sub) || '{}'); } catch (e) { return {}; } })() }); if (+r['Orçamento']) orc[str(r.Nome)] = +r['Orçamento']; if (+r.orc_upd) orcUpd[str(r.Nome)] = +r.orc_upd; }
   const regras = sh('Regras').filter(r => r.Texto).map(r => ({ k: str(r.Texto), tipo: str(r.Tipo), cat: str(r.Categoria), sub: str(r.Subcategoria), user: true, upd: +r.upd || 0 }));
-  const pessoas = sh('Pessoas').filter(r => r.id).map(r => ({ id: str(r.id), nome: str(r.Nome), aliases: str(r.Nomes_no_extrato).split(' | ').filter(Boolean) }));
+  const pessoas = sh('Pessoas').filter(r => r.id).map(r => cheio(r, { id: str(r.id), nome: str(r.Nome), aliases: str(r.Nomes_no_extrato).split(' | ').filter(Boolean) }));
   const info = sh('Info')[0] || {};
   return { tx, contas, contratos, fixas, cats, orc, orcUpd, regras, pessoas, de: str(info.salvo_por), mei: str(info.mei).split(' | ').filter(Boolean), apagados: json(str(info.apagados)) || {} };
 }
