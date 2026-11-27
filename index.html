@@ -3671,7 +3671,8 @@ function rAjustes() {
 `,
     pessoas: `  <div class="card" id="aj-pessoas"><h2>Pessoas</h2><p class="small muted" style="margin-top:-4px">O nome completo como aparece no Pix serve para o app saber que um Pix entre vocês é transferência, e não entrada ou despesa. O e-mail é o do login: com ele, o app reconhece quem é em qualquer celular.</p>
   ${S.pessoas.map((p, k) => `<div style="${k ? 'border-top:1px solid var(--line);margin-top:12px;padding-top:4px' : ''}"><div class="grid2"><div><label class="l">Como chamar</label><input class="f" data-pnome="${p.id}" value="${esc(p.nome)}" placeholder="Pessoa ${k + 1}"></div><div><label class="l">E-mail do login</label><input class="f" data-pemail="${p.id}" type="email" value="${esc(p.email || '')}" placeholder="opcional"></div></div>
-    <label class="l">Nome completo no Pix (pode pôr mais de um, separados por vírgula)</label><input class="f" data-alias="${p.id}" value="${esc((p.aliases || []).join(', '))}" placeholder="Ex.: ANA MARIA DA SILVA"></div>`).join('')}
+    <label class="l">Nome completo no Pix (pode pôr mais de um, separados por vírgula)</label><input class="f" data-alias="${p.id}" value="${esc((p.aliases || []).join(', '))}" placeholder="Ex.: ANA MARIA DA SILVA">
+    ${p.id !== S.eu && S.pessoas.length > 1 ? `<button class="btn sm" data-delpessoa="${p.id}" style="margin-top:10px;color:var(--red)">${ti('trash', 15)} Excluir ${esc(p.nome || 'pessoa')}</button>` : ''}</div>`).join('')}
   <button class="btn sm" id="pes-add" style="margin-top:12px">${ti('user-plus', 15)} Adicionar pessoa</button>
   <label class="l">MEI ou outro negócio (textos que aparecem no extrato, como o CNPJ)</label><input class="f" id="mei" value="${esc((S.meiChaves || []).join(', '))}" placeholder="ex.: 12345678, 12.345.678">
   <div class="tiny" style="margin-top:4px">O que vem do MEI entra como “Retirada do MEI”. O que vai para ele é despesa (“Aporte no MEI”).</div></div>
@@ -3703,12 +3704,44 @@ function rAjustes() {
   document.querySelectorAll('[data-cord]').forEach(x => x.onclick = () => { const [k, d] = x.dataset.cord.split('|').map(Number), L = S.cats[V.catAba || 'despesa'], j = k + d; if (j < 0 || j >= L.length) return; [L[k], L[j]] = [L[j], L[k]]; S.catsUpd = Date.now(); save(false); render(); });
   if ($('#zerar')) $('#zerar').onclick = apagarDados;
   if ($('#pes-add')) $('#pes-add').onclick = () => { const id = novaPessoaId(); S.pessoas.push({ id, nome: 'Pessoa ' + (S.pessoas.length + 1), aliases: [] }); S.pessoasUpd = Date.now(); save(false); render(); setTimeout(() => { const x = document.querySelector(`[data-pnome="${id}"]`); if (x) { x.select(); x.focus(); } }, 50); };
+  document.querySelectorAll('[data-delpessoa]').forEach(b => b.onclick = () => excluirPessoa(b.dataset.delpessoa));
   document.querySelectorAll('[data-pnome]').forEach(i => i.onchange = () => { const v = i.value.trim(); if (!v) { i.value = pessoa(i.dataset.pnome).nome; return; } const p = pessoa(i.dataset.pnome); p.nome = v; if (!p.aliases.length) p.aliases = [v]; S.pessoasUpd = Date.now(); save(false); render(); toast('Salvo'); });
   document.querySelectorAll('[data-pemail]').forEach(i => i.onchange = () => { const v = i.value.trim().toLowerCase(), p = pessoa(i.dataset.pemail); if (v && S.pessoas.some(o => o !== p && String(o.email || '').toLowerCase() === v)) { toast('Esse e-mail já está com a outra pessoa'); i.value = p.email || ''; return; } if (v) p.email = v; else delete p.email; S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
   if ($('#mei')) $('#mei').onchange = e => { S.meiChaves = e.target.value.split(',').map(x => x.trim()).filter(Boolean); P.meiChaves = S.meiChaves; S.cfgUpd = Object.assign(S.cfgUpd || {}, { mei: Date.now() }); save(false); toast('Salvo'); };
   document.querySelectorAll('[data-alias]').forEach(i => i.onchange = () => { pessoa(i.dataset.alias).aliases = i.value.split(',').map(x => x.trim()).filter(Boolean); S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
 }
 
+// excluir pessoa: o que for dela (contas, fixas, dívidas, metas) passa para outra pessoa ou para a Casa antes
+function excluirPessoa(id) {
+  const p = pessoa(id); if (!p || id === S.eu || S.pessoas.length < 2) return;
+  const dela = L => (L || []).filter(x => x.dono === id);
+  const C = dela(S.contas), F = dela(S.fixas), K = dela(S.contratos), M = dela(S.metas);
+  const ids = new Set(C.map(c => c.id)), nTx = live().filter(t => ids.has(t.conta)).length;
+  const partes = [[C.length, 'conta(s) e cartão(ões)'], [nTx, 'lançamento(s)'], [F.length, 'conta(s) fixa(s)'], [K.length, 'dívida(s)'], [M.length, 'meta(s)']].filter(([n]) => n).map(([n, t]) => n + ' ' + t);
+  const tira = () => { S.pessoas = S.pessoas.filter(o => o.id !== id); S.pessoasUpd = Date.now(); if (V.quem === id) V.quem = 'all'; };
+  const passar = destino => { const ag = Date.now(); for (const x of [...C, ...F, ...K, ...M]) { x.dono = destino; x.upd = ag; } tira(); save(false); render(); toast(p.nome + ' excluída. Os dados passaram para ' + donoNome(destino)); };
+  const apagarJunto = () => {
+    const ag = Date.now();
+    for (const c of C) marcaApagado('contas', c.id);
+    S.contas = S.contas.filter(c => !ids.has(c.id));
+    for (const c of S.contas) { if (ids.has(c.pagaPor)) { delete c.pagaPor; c.upd = ag; } if (ids.has(c.daConta)) { delete c.daConta; c.upd = ag; } }
+    for (const t of S.tx) if (!t.del && ids.has(t.conta)) { t.del = true; t.upd = ag; }
+    for (const x of F) marcaApagado('fixas', x.id); for (const x of K) marcaApagado('contratos', x.id); for (const x of M) marcaApagado('metas', x.id);
+    S.fixas = (S.fixas || []).filter(x => !F.includes(x)); S.contratos = (S.contratos || []).filter(x => !K.includes(x)); S.metas = (S.metas || []).filter(x => !M.includes(x));
+    tira(); IDX = null; save(); render(); toast(p.nome + ' e os dados dela foram excluídos');
+  };
+  if (!partes.length) { confirma(`Excluir ${p.nome}?`, () => { tira(); save(false); render(); toast(p.nome + ' excluída'); }, 'Excluir'); return; }
+  const outras = S.pessoas.filter(o => o.id !== id);
+  const s = sheet(`<h2>Excluir ${esc(p.nome)}?</h2><p class="small" style="margin-top:4px">${esc(p.nome)} tem ${esc(partes.join(', '))}. O que fazer com esses dados?</p>
+    <div class="seg" id="dp-modo" style="margin-top:10px"><button class="on" data-dpm="passar">Passar para alguém</button><button data-dpm="junto">Excluir junto</button></div>
+    <div id="dp-passar"><label class="l">Passar para</label><select class="f" id="dp-dest">${outras.map(o => `<option value="${o.id}">${esc(o.nome)}</option>`).join('')}<option value="casa">Casa (da família)</option></select></div>
+    <p class="small" id="dp-junto" style="display:none;margin-top:10px;color:var(--red)">Apaga ${esc(partes.join(', '))}${SYNC.on ? ' nos dois celulares' : ''}. Não dá para desfazer. Se quiser, salve um backup antes em Mais.</p>
+    ${p.email ? `<p class="tiny" style="margin-top:8px">O login ${esc(p.email)} deixa de ser reconhecido como ${esc(p.nome)}.</p>` : ''}
+    <div class="grid2" style="margin-top:14px"><button class="btn" data-fechar>Cancelar</button><button class="btn danger" id="dp-ok">Excluir</button></div>`);
+  let modo = 'passar';
+  s.querySelectorAll('[data-dpm]').forEach(b => b.onclick = () => { modo = b.dataset.dpm; s.querySelectorAll('[data-dpm]').forEach(x => x.classList.toggle('on', x === b)); s.querySelector('#dp-passar').style.display = modo === 'passar' ? '' : 'none'; s.querySelector('#dp-junto').style.display = modo === 'junto' ? '' : 'none'; s.querySelector('#dp-ok').textContent = modo === 'junto' ? 'Excluir tudo' : 'Excluir'; });
+  s.querySelector('#dp-ok').onclick = () => { const d = s.querySelector('#dp-dest').value; s.remove(); if (modo === 'junto') apagarJunto(); else passar(d); };
+}
 // ---- Mais › Contas / Cartões / Crédito em app: lista por pessoa, adicionar e ordenar
 function resumoGrupo(g) {
   const L = ativas().filter(c => grupoDe(c) === g && (V.quem === 'all' || c.dono === V.quem));
