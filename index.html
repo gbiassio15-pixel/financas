@@ -703,6 +703,8 @@ P.classify = function (row, conta, rules, pessoas) {
   }
   if (best) return { tipo: best.tipo, cat: best.cat, sub: best.sub, auto: 'regra', espelho: best.espelho };
   if (conta && (conta.tipo === 'cartao' || conta.tipo === 'loja')) return { tipo: row.valor > 0 ? 'neutro' : 'despesa', cat: '', sub: '', auto: '' };
+  // benefício (Flash, Caju, VR, VA): o que entra é o crédito do benefício
+  if (conta && conta.tipo === 'beneficio' && row.valor > 0) return { tipo: 'receita', cat: 'Benefícios', sub: '', auto: 'regra' };
   return { tipo: row.valor >= 0 ? 'receita' : 'despesa', cat: '', sub: '', auto: '' };
 };
 
@@ -837,7 +839,15 @@ function migra() {
   P.meiChaves = S.meiChaves || [];
   if (S.mig < 12) migra12();
   if (S.mig < 13) migra13();
+  if (S.mig < 14) migra14();
   try { const a = conciliaFaturas(), b = pareiaTransf(); if (a || b) salvaLocal(); } catch (e) { console.warn(e); }
+}
+// benefício cadastrado como conta vira benefício; créditos do benefício sem categoria viram “Benefícios”
+function migra14() {
+  const ag = Date.now();
+  for (const c of S.contas) if (c.tipo === 'conta' && ehBeneficio(c)) { c.tipo = 'beneficio'; c.upd = ag; }
+  for (const t of S.tx) { const c = conta(t.conta); if (!t.del && c && c.tipo === 'beneficio' && t.valor > 0 && t.tipo === 'receita' && !t.cat && !t.travado) { t.cat = 'Benefícios'; t.upd = ag; } }
+  S.mig = 14; salvaLocal();
 }
 // cartões: tipo de cobrança, fechamento do Nubank e Mercado Crédito em parcelas
 function migra13() {
@@ -2987,13 +2997,15 @@ function pistaPix(t) {
 }
 const nomeDaFamilia = t => !!pistaPix(t).dono;
 // cartão-benefício passado na própria maquininha: a compra no benefício e a "Liberação de dinheiro" viram uma transferência; a diferença é a taxa
+const LOGOS_BENEF = ['flash', 'caju'], RE_BENEF = /FLASH|CAJU|ALELO|SODEXO|PLUXEE|TICKET|\bVR\b|VALE ?REFEICAO|VALE ?ALIMENTACAO|SWILE|IFOOD BENEF/;
+const ehBeneficio = c => !!c && (c.tipo === 'beneficio' || (c.tipo === 'conta' && (LOGOS_BENEF.includes(c.logo) || RE_BENEF.test(P.norm((c.banco || '') + ' ' + (c.nome || ''))))));
 function ligaMaquininha() {
   const agora = Date.now(); let mudou = false; const L = live();
   const libs = L.filter(t => t.valor > 0 && /LIBERACAO DE DINHEIRO/.test(P.norm(t.desc || '')) && (conta(t.conta) || {}).tipo === 'conta');
   const usados = new Set(L.filter(t => t.maq).map(t => t.id));
   for (const lib of libs) {
     if (lib.maq && L.some(x => x.id === lib.maq)) continue;
-    const cands = L.filter(t => !usados.has(t.id) && !t.maq && !/^esp\|/.test(t.id) && t.valor < 0 && (conta(t.conta) || {}).tipo === 'beneficio' && !t.travado
+    const cands = L.filter(t => !usados.has(t.id) && !t.maq && !/^esp\|/.test(t.id) && t.valor < 0 && ehBeneficio(conta(t.conta)) && !t.travado
       && -t.valor >= lib.valor - 0.005 && -t.valor - lib.valor <= Math.max(1, -t.valor * 0.08) && P.diffDias(lib.data, t.data) >= 0 && P.diffDias(lib.data, t.data) <= 3);
     if (cands.length !== 1) continue;
     const t = cands[0], tx = Math.round((-t.valor - lib.valor) * 100) / 100;
@@ -3820,7 +3832,7 @@ function menuMais(lastB) {
     ${it('zerar', 'trash', '#D6404A', 'Apagar dados', SYNC.on ? 'Apaga nos dois celulares' : '')}</div>
   <p class="tiny" style="text-align:center;margin-top:16px">GeMa · versão ${VERSAO}</p>`;
 }
-const VERSAO = 26;
+const VERSAO = 27;
 // ---- Mais › Transferências: CPF de cada um, MEI e reclassificar
 function cardTransfAjustes() {
   return `<div class="card"><h2>CPF de cada um</h2><p class="small muted" style="margin-top:-4px">Só os 6 dígitos do meio, como o Nubank e o Mercado Pago mostram no extrato (•••.<b>456.789</b>-••). Com eles, o Pix entre vocês vira transferência mesmo quando o nome não aparece.</p>
@@ -4066,7 +4078,9 @@ function editarConta(c, grupo, pre = {}) {
       const lv = P.money(s.querySelector('#cc-lim').value); if (lv > 0) b.limite = Math.round(lv * 100) / 100; else delete b.limite;
       b.pagaPor = s.querySelector('#cc-pagapor').value || undefined; b.pagChaves = s.querySelector('#cc-pagch').value.split(',').map(x => x.trim()).filter(Boolean); }
     if (b.tipo === 'invest') b.daConta = s.querySelector('#cc-daconta').value || undefined;
+    if (!icone && !logo) { const bk = BANCOS.find(([re]) => re.test(P.norm(nome))); if (bk && bk[4]) logo = bk[4]; }
     if (icone) { b.icone = icone; delete b.logo; } else { delete b.icone; if (logo) { b.logo = logo; b.banco = LOGO_NOME[logo]; } }
+    if (b.tipo === 'conta' && ehBeneficio(b)) b.tipo = 'beneficio';
     if (s.querySelector('#cc-total')) { if (s.querySelector('#cc-total').classList.contains('on')) delete b.foraTotal; else b.foraTotal = true; }
     if (s.querySelector('#cc-princ')) { const on = s.querySelector('#cc-princ').classList.contains('on'); for (const p of S.pessoas) { if (p.contaPrincipal === b.id && (!on || p.id !== b.dono)) { delete p.contaPrincipal; S.pessoasUpd = Date.now(); } } const pd = pessoa(b.dono); if (on && pd && pd.contaPrincipal !== b.id) { pd.contaPrincipal = b.id; S.pessoasUpd = Date.now(); } }
     if (novo) b.ordem = Math.max(0, ...S.contas.filter(x => grupoDe(x) === grupoDe(b)).map(x => x.ordem ?? 0)) + 1;
