@@ -54,6 +54,8 @@ h2{font-size:16px;font-weight:600;margin:0 0 10px;letter-spacing:-.01em}
 .seg button{flex:1;border:0;background:transparent;padding:7px 8px;border-radius:10px;font-size:13px;font-weight:600;color:var(--tx2);cursor:pointer;white-space:nowrap}
 .seg button.on{background:var(--card);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .seg.cobra button{white-space:normal;line-height:1.25;font-size:12px;padding:8px 4px}.seg.cobra button.on{background:var(--acc);color:#fff}
+.logolib{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.logolib button{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--tx2);cursor:pointer;min-width:0}.logolib button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logolib img,.logolib .up{width:44px;height:44px;border-radius:12px;object-fit:cover;border:2px solid transparent;display:grid;place-items:center}.logolib .up{border:1px dashed var(--tx3);color:var(--tx2);overflow:hidden}.logolib .up img{border:0;width:100%;height:100%}.logolib button.on img,.logolib button.on .up{border:2px solid var(--acc)}.logolib button.on{color:var(--tx);font-weight:600}
 .melhordia{display:flex;align-items:center;gap:8px;margin-top:10px;background:var(--accbg);color:var(--acc2);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600}.melhordia span{flex:1}.melhordia b{font-family:var(--fte);font-size:15px}
 .limbar{height:8px;border-radius:5px;background:var(--soft);overflow:hidden;margin:12px 0 6px}.limbar i{display:block;height:100%;background:var(--acc);border-radius:5px}.limbar.alto i{background:var(--amb)}.limbar.cheio i{background:var(--red)}
 .mini2{background:var(--soft);border-radius:12px;padding:10px 12px}.mini2 .k{font-size:12px;color:var(--tx2)}.mini2 .v{font-family:var(--fte);font-size:17px;font-weight:600;margin-top:2px}.mini2.verde{background:var(--accbg)}.mini2.verde .k,.mini2.verde .v{color:var(--acc2)}
@@ -160,6 +162,7 @@ h2{font-size:15px}
 /* contas deslizáveis */
 .secao{display:flex;justify-content:space-between;align-items:center;margin:4px 2px 8px}
 .secao b{font-size:15px}.secao button{border:0;background:none;color:var(--acc2);font-weight:600;font-size:13px;cursor:pointer;padding:4px}
+.linkbtn{border:0;background:none;color:var(--acc2);font-weight:600;font-size:13px;cursor:pointer;padding:2px}
 .acards{display:flex;gap:10px;overflow-x:auto;margin:0 -16px 14px;padding:2px 16px 6px;scrollbar-width:none;scroll-snap-type:x mandatory}.acards::-webkit-scrollbar{display:none}
 .acard{flex:0 0 158px;scroll-snap-align:start;border-radius:18px;padding:12px 13px;color:#fff;cursor:pointer;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 14px rgba(0,0,0,.12);position:relative;overflow:hidden;border:0;text-align:left}
 .acard .t{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
@@ -243,6 +246,9 @@ h1{font-weight:600}h2{font-weight:600;font-size:16px}.topo .ola{font-weight:600;
 .entrada-top{background:#1B2412;border-radius:24px;padding:28px 18px 22px;margin:4vh 0 18px;text-align:center}
 .entrada-top img{width:84px;height:84px;border-radius:22px}.entrada-top svg{height:24px;width:auto;display:block;margin:14px auto 8px}
 .entrada-top p{color:#B9D68A;margin:0;font-size:14px}
+.codigo-grande{font-family:ui-monospace,Menlo,monospace;font-size:26px;letter-spacing:3px;text-align:center;background:var(--ourobg);color:var(--ourotx);border-radius:14px;padding:14px;margin:12px 0 8px}
+.btn.big{padding:15px;font-size:15px}.passos{display:flex;gap:6px;margin:0 2px 12px}.passos i{flex:1;height:4px;border-radius:2px;background:var(--line)}.passos i.on{background:var(--acc)}
+.f.codigo{font-family:ui-monospace,Menlo,monospace;font-size:24px;letter-spacing:6px;text-align:center;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -615,7 +621,9 @@ P.parsePDF = function (lines, refYear) {
 
 // ===================== Classificação =====================
 P.SEED_RULES = [
-  ['COPEL', 'Contas da casa', 'Luz'], ['SANEPAR', 'Contas da casa', 'Água'], ['JABANET', 'Contas da casa', 'Internet'],
+  ...['COPEL', 'CEMIG', 'ENEL', 'CPFL', 'CELESC', 'LIGHT SA', 'NEOENERGIA', 'COELBA', 'CELPE', 'COSERN', 'EQUATORIAL', 'ENERGISA', 'RGE SUL', 'CEEE', 'EDP ', 'AMAZONAS ENERGIA'].map(k => [k, 'Contas da casa', 'Luz']),
+  ...['SANEPAR', 'SABESP', 'COPASA', 'CEDAE', 'AGUAS DO RIO', 'CORSAN', 'CASAN', 'EMBASA', 'COMPESA', 'CAGECE', 'SANEAGO', 'CAESB', 'CAERN', 'CAGEPA', 'SAAE', 'SEMAE'].map(k => [k, 'Contas da casa', 'Água']),
+  ...['VIVO FIBRA', 'CLARO NET', 'NET SERVICOS', 'OI FIBRA', 'TIM LIVE', 'BRISANET', 'DESKTOP SA', 'ALGAR', 'PROVEDOR'].map(k => [k, 'Contas da casa', 'Internet']),
   ['RECARGA DE CELULAR', 'Contas da casa', 'Celular'],
   ['AUTO POSTO', 'Carro', 'Gasolina'], ['AUTO PECAS', 'Carro', 'Consertos'], ['PNEU', 'Carro', 'Pneus'], ['COMBUSTIV', 'Carro', 'Gasolina'],
   ['PANIFICADORA', 'Mercado e padaria', 'Padaria'], ['PADARIA', 'Mercado e padaria', 'Padaria'],
@@ -638,7 +646,7 @@ P.SEED_RULES = [
   ['RESGATE DE EMPRESTIMO', 'Empréstimo', '', 'pagdivida'],
   ['CREDITO EM CONTA', 'Empréstimo', '', 'entdivida'],
   ['VALOR ADICIONADO NA CONTA POR CARTAO DE CREDITO', 'Limite do cartão', '', 'entdivida', 1], ['VALOR CREDITADO EMPRESTIMO', 'Empréstimo', '', 'entdivida', 1], ['EMPRESTIMO PESSOAL', 'Empréstimo', '', 'entdivida', 1],
-  ['LOJA DINIZ', 'Vestuário', 'Roupas'], ['PESQUEIRO', 'Lazer', 'Passeios'], ['TOMODATY', 'Contas da casa', 'Gás de cozinha'], ['GAS DE COZINHA', 'Contas da casa', 'Gás de cozinha'], ['AUTENTICA VARIEDADES', 'Salário', '', 'receita', 1],
+  ['PESQUEIRO', 'Lazer', 'Passeios'], ['GAS DE COZINHA', 'Contas da casa', 'Gás de cozinha'], ['ULTRAGAZ', 'Contas da casa', 'Gás de cozinha'], ['LIQUIGAS', 'Contas da casa', 'Gás de cozinha'], ['SUPERGASBRAS', 'Contas da casa', 'Gás de cozinha'], ['COPAGAZ', 'Contas da casa', 'Gás de cozinha'], ['NACIONAL GAS', 'Contas da casa', 'Gás de cozinha'], ['GAS E AGUA', 'Contas da casa', 'Gás de cozinha'],
   ['LIBERACAO DE DINHEIRO', 'Flash → Mercado Pago', '', 'transf'],
   ['DINHEIRO RESERVADO', 'Investimento', '', 'transf'], ['DINHEIRO RETIRADO', 'Investimento', '', 'transf'], ['COFRINHO', 'Investimento', '', 'transf'],
   ['DINHEIRO GUARDADO', 'Investimento', '', 'transf'], ['DINHEIRO RESGATADO', 'Investimento', '', 'transf'], ['APLICACAO RDB', 'Investimento', '', 'transf'], ['RESGATE RDB', 'Investimento', '', 'transf'],
@@ -731,6 +739,7 @@ const ICO = {
 const TI = {"home": "<path d=\"M5 12l-2 0l9 -9l9 9l-2 0\" /> <path d=\"M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7\" /> <path d=\"M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6\" />", "bulb": "<path d=\"M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7\" /> <path d=\"M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3\" /> <path d=\"M9.7 17l4.6 0\" />", "shopping-cart": "<path d=\"M4 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M17 17h-11v-14h-2\" /> <path d=\"M6 5l14 1l-1 7h-13\" />", "tools-kitchen-2": "<path d=\"M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12m0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3\" />", "car": "<path d=\"M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5\" />", "first-aid-kit": "<path d=\"M8 8v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2\" /> <path d=\"M4 10a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -8\" /> <path d=\"M10 14h4\" /> <path d=\"M12 12v4\" />", "shirt": "<path d=\"M15 4l6 2v5h-3v8a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1v-8h-3v-5l6 -2a3 3 0 0 0 6 0\" />", "scissors": "<path d=\"M3 7a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M3 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M8.6 8.6l10.4 10.4\" /> <path d=\"M8.6 15.4l10.4 -10.4\" />", "armchair": "<path d=\"M5 11a2 2 0 0 1 2 2v2h10v-2a2 2 0 1 1 4 0v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2\" /> <path d=\"M5 11v-5a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v5\" /> <path d=\"M6 19v2\" /> <path d=\"M18 19v2\" />", "shopping-bag": "<path d=\"M6.331 8h11.339a2 2 0 0 1 1.977 2.304l-1.255 8.152a3 3 0 0 1 -2.966 2.544h-6.852a3 3 0 0 1 -2.965 -2.544l-1.255 -8.152a2 2 0 0 1 1.977 -2.304\" /> <path d=\"M9 11v-5a3 3 0 0 1 6 0v5\" />", "device-mobile": "<path d=\"M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14\" /> <path d=\"M11 4h2\" /> <path d=\"M12 17v.01\" />", "device-tv": "<path d=\"M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9\" /> <path d=\"M16 3l-4 4l-4 -4\" />", "receipt-tax": "<path d=\"M9 14l6 -6\" /> <path d=\"M9 8.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M14 13.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2\" />", "building-bank": "<path d=\"M3 21l18 0\" /> <path d=\"M3 10l18 0\" /> <path d=\"M5 6l7 -3l7 3\" /> <path d=\"M4 10l0 11\" /> <path d=\"M20 10l0 11\" /> <path d=\"M8 14l0 3\" /> <path d=\"M12 14l0 3\" /> <path d=\"M16 14l0 3\" />", "trending-down": "<path d=\"M3 7l6 6l4 -4l8 8\" /> <path d=\"M21 10l0 7l-7 0\" />", "package": "<path d=\"M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5\" /> <path d=\"M12 12l8 -4.5\" /> <path d=\"M12 12l0 9\" /> <path d=\"M12 12l-8 -4.5\" /> <path d=\"M16 5.25l-8 4.5\" />", "briefcase": "<path d=\"M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -9\" /> <path d=\"M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2\" /> <path d=\"M12 12l0 .01\" /> <path d=\"M3 13a20 20 0 0 0 18 0\" />", "gift": "<path d=\"M3 9a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1l0 -2\" /> <path d=\"M12 8l0 13\" /> <path d=\"M19 12v7a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7\" /> <path d=\"M7.5 8a2.5 2.5 0 0 1 0 -5a4.8 8 0 0 1 4.5 5a4.8 8 0 0 1 4.5 -5a2.5 2.5 0 0 1 0 5\" />", "chart-line": "<path d=\"M4 19l16 0\" /> <path d=\"M4 15l4 -6l4 2l4 -5l4 4\" />", "coin": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /> <path d=\"M14.8 9a2 2 0 0 0 -1.8 -1h-2a2 2 0 1 0 0 4h2a2 2 0 1 1 0 4h-2a2 2 0 0 1 -1.8 -1\" /> <path d=\"M12 7v10\" />", "pig-money": "<path d=\"M15 11v.01\" /> <path d=\"M5.173 8.378a3 3 0 1 1 4.656 -1.377\" /> <path d=\"M16 4v3.803a6.019 6.019 0 0 1 2.658 3.197h1.341a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1.342c-.336 .95 -.907 1.8 -1.658 2.473v2.027a1.5 1.5 0 0 1 -3 0v-.583a6.04 6.04 0 0 1 -1 .083h-4a6.04 6.04 0 0 1 -1 -.083v.583a1.5 1.5 0 0 1 -3 0v-2l0 -.027a6 6 0 0 1 4 -10.473h2.5l4.5 -3\" />", "building-store": "<path d=\"M3 21l18 0\" /> <path d=\"M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4\" /> <path d=\"M5 21l0 -10.15\" /> <path d=\"M19 21l0 -10.15\" /> <path d=\"M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4\" />", "credit-card": "<path d=\"M3 8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -8\" /> <path d=\"M3 10l18 0\" /> <path d=\"M7 15l.01 0\" /> <path d=\"M11 15l2 0\" />", "file-dollar": "<path d=\"M14 3v4a1 1 0 0 0 1 1h4\" /> <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" /> <path d=\"M14 11h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5\" /> <path d=\"M12 17v1m0 -8v1\" />", "arrows-exchange": "<path d=\"M7 10h14l-4 -4\" /> <path d=\"M17 14h-14l4 4\" />", "credit-card-pay": "<path d=\"M12 19h-6a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v4.5\" /> <path d=\"M3 10h18\" /> <path d=\"M16 19h6\" /> <path d=\"M19 16l3 3l-3 3\" /> <path d=\"M7.005 15h.005\" /> <path d=\"M11 15h2\" />", "player-pause": "<path d=\"M6 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12\" /> <path d=\"M14 6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v12a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -12\" />", "help-circle": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /> <path d=\"M12 16v.01\" /> <path d=\"M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483\" />", "sun": "<path d=\"M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" /> <path d=\"M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7\" />", "moon": "<path d=\"M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008\" />", "repeat": "<path d=\"M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3\" /> <path d=\"M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3\" />", "chart-bar": "<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6\" /> <path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10\" /> <path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14\" /> <path d=\"M4 20h14\" />", "calendar-event": "<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\" /> <path d=\"M16 3l0 4\" /> <path d=\"M8 3l0 4\" /> <path d=\"M4 11l16 0\" /> <path d=\"M8 15h2v2h-2l0 -2\" />", "arrow-down-left": "<path d=\"M17 7l-10 10\" /> <path d=\"M16 17l-9 0l0 -9\" />", "arrow-up-right": "<path d=\"M17 7l-10 10\" /> <path d=\"M8 7l9 0l0 9\" />", "photo": "<path d=\"M15 8h.01\" /> <path d=\"M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12\" /> <path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5\" /> <path d=\"M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3\" />", "upload": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\" /> <path d=\"M7 9l5 -5l5 5\" /> <path d=\"M12 4l0 12\" />", "plus": "<path d=\"M12 5l0 14\" /> <path d=\"M5 12l14 0\" />", "list": "<path d=\"M9 6l11 0\" /> <path d=\"M9 12l11 0\" /> <path d=\"M9 18l11 0\" /> <path d=\"M5 6l0 .01\" /> <path d=\"M5 12l0 .01\" /> <path d=\"M5 18l0 .01\" />", "settings": "<path d=\"M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065\" /> <path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "chevron-left": "<path d=\"M15 6l-6 6l6 6\" />", "chevron-right": "<path d=\"M9 6l6 6l-6 6\" />", "x": "<path d=\"M18 6l-12 12\" /> <path d=\"M6 6l12 12\" />", "search": "<path d=\"M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\" /> <path d=\"M21 21l-6 -6\" />", "file": "<path d=\"M14 3v4a1 1 0 0 0 1 1h4\" /> <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" />", "cloud": "<path d=\"M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878\" />", "cloud-off": "<path d=\"M9.58 5.548c.24 -.11 .492 -.207 .752 -.286c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 .957 -.383 1.824 -1.003 2.454m-2.997 1.033h-11.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.13 -.582 .37 -1.128 .7 -1.62\" /> <path d=\"M3 3l18 18\" />", "refresh": "<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\" /> <path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\" />", "logout": "<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\" /> <path d=\"M9 12h12l-3 -3\" /> <path d=\"M18 15l3 -3\" />", "user": "<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\" /> <path d=\"M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\" />", "calendar-repeat": "<path d=\"M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3\" /> <path d=\"M16 3v4\" /> <path d=\"M8 3v4\" /> <path d=\"M4 11h12\" /> <path d=\"M20 14l2 2h-3\" /> <path d=\"M20 18l2 -2\" /> <path d=\"M19 16a3 3 0 1 0 2 5.236\" />", "download": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\" /> <path d=\"M7 11l5 5l5 -5\" /> <path d=\"M12 4l0 12\" />", "alert-triangle": "<path d=\"M12 9v4\" /> <path d=\"M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0\" /> <path d=\"M12 16h.01\" />", "check": "<path d=\"M5 12l5 5l10 -10\" />", "bolt": "<path d=\"M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11\" />", "cash": "<path d=\"M7 15h-3a1 1 0 0 1 -1 -1v-8a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v3\" /> <path d=\"M7 10a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8\" /> <path d=\"M12 14a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\" />", "wallet": "<path d=\"M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12\" /> <path d=\"M20 12v4h-4a2 2 0 0 1 0 -4h4\" />", "sparkles": "<path d=\"M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6\" />", "pig": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />\n  <path d=\"M15 11v.01\" />\n  <path d=\"M16 3l0 3.803a6.019 6.019 0 0 1 2.658 3.197h1.341a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-1.342a6.008 6.008 0 0 1 -1.658 2.473v2.027a1.5 1.5 0 0 1 -3 0v-.583a6.04 6.04 0 0 1 -1 .083h-4a6.04 6.04 0 0 1 -1 -.083v.583a1.5 1.5 0 0 1 -3 0v-2l0 -.027a6 6 0 0 1 4 -10.473h2.5l4.5 -3\" />", "link": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />\n  <path d=\"M9 15l6 -6\" />\n  <path d=\"M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464\" />\n  <path d=\"M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463\" />", "trending-up": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />\n  <path d=\"M3 17l6 -6l4 4l8 -8\" />\n  <path d=\"M14 7l7 0l0 7\" />", "apple": "<path d=\"M4 11.319c0 3.102 .444 5.319 2.222 7.978c1.351 1.797 3.156 2.247 5.08 .988c.426 -.268 .97 -.268 1.397 0c1.923 1.26 3.728 .809 5.079 -.988c1.778 -2.66 2.222 -4.876 2.222 -7.977c0 -2.661 -1.99 -5.32 -4.444 -5.32c-1.267 0 -2.41 .693 -3.22 1.44a.5 .5 0 0 1 -.672 0c-.809 -.746 -1.953 -1.44 -3.22 -1.44c-2.454 0 -4.444 2.66 -4.444 5.319\" /> <path d=\"M7 12c0 -1.47 .454 -2.34 1.5 -3\" /> <path d=\"M12 7c0 -1.2 .867 -4 3 -4\" />", "apps": "<path d=\"M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4\" /> <path d=\"M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4\" /> <path d=\"M14 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4\" /> <path d=\"M14 7l6 0\" /> <path d=\"M17 4l0 6\" />", "baby-bottle": "<path d=\"M5 10h14\" /> <path d=\"M12 2v2\" /> <path d=\"M12 4a5 5 0 0 1 5 5v11a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-11a5 5 0 0 1 5 -5\" />", "baby-carriage": "<path d=\"M6 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M16 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M2 5h2.5l1.632 4.897a6 6 0 0 0 5.693 4.103h2.675a5.5 5.5 0 0 0 0 -11h-.5v6\" /> <path d=\"M6 9h14\" /> <path d=\"M9 17l1 -3\" /> <path d=\"M16 14l1 3\" />", "backpack": "<path d=\"M5 18v-6a6 6 0 0 1 6 -6h2a6 6 0 0 1 6 6v6a3 3 0 0 1 -3 3h-8a3 3 0 0 1 -3 -3\" /> <path d=\"M10 6v-1a2 2 0 1 1 4 0v1\" /> <path d=\"M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4\" /> <path d=\"M11 10h2\" />", "ball-football": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /> <path d=\"M12 7l4.76 3.45l-1.76 5.55h-6l-1.76 -5.55l4.76 -3.45\" /> <path d=\"M12 7v-4m3 13l2.5 3m-.74 -8.55l3.74 -1.45m-11.44 7.05l-2.56 2.95m.74 -8.55l-3.74 -1.45\" />", "balloon": "<path d=\"M14 8a2 2 0 0 0 -2 -2\" /> <path d=\"M6 8a6 6 0 1 1 12 0c0 4.97 -2.686 9 -6 9s-6 -4.03 -6 -9\" /> <path d=\"M12 17v1a2 2 0 0 1 -2 2h-3a2 2 0 0 0 -2 2\" />", "basket": "<path d=\"M10 14a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\" /> <path d=\"M5.001 8h13.999a2 2 0 0 1 1.977 2.304l-1.255 7.152a3 3 0 0 1 -2.966 2.544h-9.512a3 3 0 0 1 -2.965 -2.544l-1.255 -7.152a2 2 0 0 1 1.977 -2.304\" /> <path d=\"M17 10l-2 -6\" /> <path d=\"M7 10l2 -6\" />", "bath": "<path d=\"M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1 -4 4h-10a4 4 0 0 1 -4 -4v-3a1 1 0 0 1 1 -1\" /> <path d=\"M6 12v-7a2 2 0 0 1 2 -2h3v2.25\" /> <path d=\"M4 21l1 -1.5\" /> <path d=\"M20 21l-1 -1.5\" />", "beach": "<path d=\"M17.553 16.75a7.5 7.5 0 0 0 -10.606 0\" /> <path d=\"M18 3.804a6 6 0 0 0 -8.196 2.196l10.392 6a6 6 0 0 0 -2.196 -8.196\" /> <path d=\"M16.732 10c1.658 -2.87 2.225 -5.644 1.268 -6.196c-.957 -.552 -3.075 1.326 -4.732 4.196\" /> <path d=\"M15 9l-3 5.196\" /> <path d=\"M3 19.25a2.4 2.4 0 0 1 1 -.25a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 1 .25\" />", "bed": "<path d=\"M5 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M22 17v-3h-20\" /> <path d=\"M2 8v9\" /> <path d=\"M12 14h10v-2a3 3 0 0 0 -3 -3h-7v5\" />", "beer": "<path d=\"M9 21h6a1 1 0 0 0 1 -1v-3.625c0 -1.397 .29 -2.775 .845 -4.025l.31 -.7c.556 -1.25 .845 -2.253 .845 -3.65v-4a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1v4c0 1.397 .29 2.4 .845 3.65l.31 .7a9.931 9.931 0 0 1 .845 4.025v3.625a1 1 0 0 0 1 1\" /> <path d=\"M6 8h12\" />", "bike": "<path d=\"M2 18a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" /> <path d=\"M16 18a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" /> <path d=\"M12 19v-4l-3 -3l5 -4l2 3h3\" /> <path d=\"M13.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" />", "bone": "<path d=\"M15 3a3 3 0 0 1 3 3a3 3 0 1 1 -2.12 5.122l-4.758 4.758a3 3 0 1 1 -5.117 2.297l0 -.177l-.176 0a3 3 0 1 1 2.298 -5.115l4.758 -4.758a3 3 0 0 1 2.12 -5.122l-.005 -.005\" />", "book": "<path d=\"M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0\" /> <path d=\"M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0\" /> <path d=\"M3 6l0 13\" /> <path d=\"M12 6l0 13\" /> <path d=\"M21 6l0 13\" />", "books": "<path d=\"M5 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14\" /> <path d=\"M9 5a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -14\" /> <path d=\"M5 8h4\" /> <path d=\"M9 16h4\" /> <path d=\"M13.803 4.56l2.184 -.53c.562 -.135 1.133 .19 1.282 .732l3.695 13.418a1.02 1.02 0 0 1 -.634 1.219l-.133 .041l-2.184 .53c-.562 .135 -1.133 -.19 -1.282 -.732l-3.695 -13.418a1.02 1.02 0 0 1 .634 -1.219l.133 -.041\" /> <path d=\"M14 9l4 -1\" /> <path d=\"M16 16l3.923 -.98\" />", "bottle": "<path d=\"M10 5h4v-2a1 1 0 0 0 -1 -1h-2a1 1 0 0 0 -1 1v2\" /> <path d=\"M14 3.5c0 1.626 .507 3.212 1.45 4.537l.05 .07a8.093 8.093 0 0 1 1.5 4.694v6.199a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-6.2c0 -1.682 .524 -3.322 1.5 -4.693l.05 -.07a7.823 7.823 0 0 0 1.45 -4.537\" /> <path d=\"M7 14.803a2.4 2.4 0 0 0 1 -.803a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 1 -.805\" />", "bowl-spoon": "<path d=\"M4 11h16a1 1 0 0 1 1 1v.5c0 1.5 -2.517 5.573 -4 6.5v1a1 1 0 0 1 -1 1h-8a1 1 0 0 1 -1 -1v-1c-1.687 -1.054 -4 -5 -4 -6.5v-.5a1 1 0 0 1 1 -1\" /> <path d=\"M8 7c1.657 0 3 -.895 3 -2s-1.343 -2 -3 -2s-3 .895 -3 2s1.343 2 3 2\" /> <path d=\"M11 5h9\" />", "brain": "<path d=\"M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8\" /> <path d=\"M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8\" /> <path d=\"M17.5 16a3.5 3.5 0 0 0 0 -7h-.5\" /> <path d=\"M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0\" /> <path d=\"M6.5 16a3.5 3.5 0 0 1 0 -7h.5\" /> <path d=\"M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10\" />", "bread": "<path d=\"M18 4a3 3 0 0 1 2 5.235v8.765a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-8.764a3 3 0 0 1 1.824 -5.231h12.176v-.005\" />", "brush": "<path d=\"M3 21v-4a4 4 0 1 1 4 4h-4\" /> <path d=\"M21 3a16 16 0 0 0 -12.8 10.2\" /> <path d=\"M21 3a16 16 0 0 1 -10.2 12.8\" /> <path d=\"M10.6 9a9 9 0 0 1 4.4 4.4\" />", "building": "<path d=\"M3 21l18 0\" /> <path d=\"M9 8l1 0\" /> <path d=\"M9 12l1 0\" /> <path d=\"M9 16l1 0\" /> <path d=\"M14 8l1 0\" /> <path d=\"M14 12l1 0\" /> <path d=\"M14 16l1 0\" /> <path d=\"M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16\" />", "burger": "<path d=\"M4 15h16a4 4 0 0 1 -4 4h-8a4 4 0 0 1 -4 -4\" /> <path d=\"M12 4c3.783 0 6.953 2.133 7.786 5h-15.572c.833 -2.867 4.003 -5 7.786 -5\" /> <path d=\"M5 12h14\" />", "bus": "<path d=\"M4 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8\" /> <path d=\"M16 5l1.5 7l4.5 0\" /> <path d=\"M2 10l15 0\" /> <path d=\"M7 5l0 5\" /> <path d=\"M12 5l0 5\" />", "cake": "<path d=\"M3 20h18v-8a3 3 0 0 0 -3 -3h-12a3 3 0 0 0 -3 3v8\" /> <path d=\"M3 14.803c.312 .135 .654 .204 1 .197a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1c.35 .007 .692 -.062 1 -.197\" /> <path d=\"M12 4l1.465 1.638a2 2 0 1 1 -3.015 .099l1.55 -1.737\" />", "calculator": "<path d=\"M4 5a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -14\" /> <path d=\"M8 8a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v1a1 1 0 0 1 -1 1h-6a1 1 0 0 1 -1 -1l0 -1\" /> <path d=\"M8 14l0 .01\" /> <path d=\"M12 14l0 .01\" /> <path d=\"M16 14l0 .01\" /> <path d=\"M8 17l0 .01\" /> <path d=\"M12 17l0 .01\" /> <path d=\"M16 17l0 .01\" />", "calendar": "<path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12\" /> <path d=\"M16 3v4\" /> <path d=\"M8 3v4\" /> <path d=\"M4 11h16\" />", "calendar-dollar": "<path d=\"M13 21h-7a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v3\" /> <path d=\"M16 3v4\" /> <path d=\"M8 3v4\" /> <path d=\"M4 11h12.5\" /> <path d=\"M21 15h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5\" /> <path d=\"M19 21v1m0 -8v1\" />", "camera": "<path d=\"M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2\" /> <path d=\"M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />", "carrot": "<path d=\"M3 21s9.834 -3.489 12.684 -6.34a4.487 4.487 0 0 0 0 -6.344a4.483 4.483 0 0 0 -6.342 0c-2.86 2.861 -6.347 12.689 -6.347 12.689l.005 -.005\" /> <path d=\"M9 13l-1.5 -1.5\" /> <path d=\"M16 14l-2 -2\" /> <path d=\"M22 8s-1.14 -2 -3 -2c-1.406 0 -3 2 -3 2s1.14 2 3 2s3 -2 3 -2\" /> <path d=\"M16 2s-2 1.14 -2 3s2 3 2 3s2 -1.577 2 -3c0 -1.86 -2 -3 -2 -3\" />", "cat": "<path d=\"M20 3v10a8 8 0 1 1 -16 0v-10l3.432 3.432a7.963 7.963 0 0 1 4.568 -1.432c1.769 0 3.403 .574 4.728 1.546l3.272 -3.546\" /> <path d=\"M2 16h5l-4 4\" /> <path d=\"M22 16h-5l4 4\" /> <path d=\"M11 16a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M9 11v.01\" /> <path d=\"M15 11v.01\" />", "certificate": "<path d=\"M12 15a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M13 17.5v4.5l2 -1.5l2 1.5v-4.5\" /> <path d=\"M10 19h-5a2 2 0 0 1 -2 -2v-10c0 -1.1 .9 -2 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -1 1.73\" /> <path d=\"M6 9l12 0\" /> <path d=\"M6 12l3 0\" /> <path d=\"M6 15l2 0\" />", "chart-pie": "<path d=\"M10 3.2a9 9 0 1 0 10.8 10.8a1 1 0 0 0 -1 -1h-6.8a2 2 0 0 1 -2 -2v-7a.9 .9 0 0 0 -1 -.8\" /> <path d=\"M15 3.5a9 9 0 0 1 5.5 5.5h-4.5a1 1 0 0 1 -1 -1v-4.5\" />", "cheese": "<path d=\"M4.519 20.008l16.481 -.008v-3.5a2 2 0 1 1 0 -4v-3.5h-16.722\" /> <path d=\"M21 9l-9.385 -4.992c-2.512 .12 -4.758 1.42 -6.327 3.425c-1.423 1.82 -2.288 4.221 -2.288 6.854c0 2.117 .56 4.085 1.519 5.721\" /> <path d=\"M15 13v.01\" /> <path d=\"M8 13v.01\" /> <path d=\"M11 16v.01\" />", "chef-hat": "<path d=\"M12 3c1.918 0 3.52 1.35 3.91 3.151a4 4 0 0 1 2.09 7.723l0 7.126h-12v-7.126a4 4 0 1 1 2.092 -7.723a4 4 0 0 1 3.908 -3.151\" /> <path d=\"M6.161 17.009l11.839 -.009\" />", "circle-check": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /> <path d=\"M9 12l2 2l4 -4\" />", "clock": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" /> <path d=\"M12 7v5l3 3\" />", "cloud-download": "<path d=\"M19 18a3.5 3.5 0 0 0 0 -7h-1a5 4.5 0 0 0 -11 -2a4.6 4.4 0 0 0 -2.1 8.4\" /> <path d=\"M12 13l0 9\" /> <path d=\"M9 19l3 3l3 -3\" />", "coffee": "<path d=\"M3 14c.83 .642 2.077 1.017 3.5 1c1.423 .017 2.67 -.358 3.5 -1c.83 -.642 2.077 -1.017 3.5 -1c1.423 -.017 2.67 .358 3.5 1\" /> <path d=\"M8 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2\" /> <path d=\"M12 3a2.4 2.4 0 0 0 -1 2a2.4 2.4 0 0 0 1 2\" /> <path d=\"M3 10h14v5a6 6 0 0 1 -6 6h-2a6 6 0 0 1 -6 -6v-5\" /> <path d=\"M16.746 16.726a3 3 0 1 0 .252 -5.555\" />", "coins": "<path d=\"M9 14c0 1.657 2.686 3 6 3s6 -1.343 6 -3s-2.686 -3 -6 -3s-6 1.343 -6 3\" /> <path d=\"M9 14v4c0 1.656 2.686 3 6 3s6 -1.344 6 -3v-4\" /> <path d=\"M3 6c0 1.072 1.144 2.062 3 2.598s4.144 .536 6 0c1.856 -.536 3 -1.526 3 -2.598c0 -1.072 -1.144 -2.062 -3 -2.598s-4.144 -.536 -6 0c-1.856 .536 -3 1.526 -3 2.598\" /> <path d=\"M3 6v10c0 .888 .772 1.45 2 2\" /> <path d=\"M3 11c0 .888 .772 1.45 2 2\" />", "confetti": "<path d=\"M4 5h2\" /> <path d=\"M5 4v2\" /> <path d=\"M11.5 4l-.5 2\" /> <path d=\"M18 5h2\" /> <path d=\"M19 4v2\" /> <path d=\"M15 9l-1 1\" /> <path d=\"M18 13l2 -.5\" /> <path d=\"M18 19h2\" /> <path d=\"M19 18v2\" /> <path d=\"M14 16.518l-6.518 -6.518l-4.39 9.58a1 1 0 0 0 1.329 1.329l9.579 -4.39\" />", "cooker": "<path d=\"M12 7h.01\" /> <path d=\"M15 7h.01\" /> <path d=\"M9 7h.01\" /> <path d=\"M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14\" /> <path d=\"M9 15h6\" /> <path d=\"M5 11h14\" />", "dental": "<path d=\"M12 5.5c-1.074 -.586 -2.583 -1.5 -4 -1.5c-2.1 0 -4 1.247 -4 5c0 4.899 1.056 8.41 2.671 10.537c.573 .756 1.97 .521 2.567 -.236c.398 -.505 .819 -1.439 1.262 -2.801c.292 -.771 .892 -1.504 1.5 -1.5c.602 0 1.21 .737 1.5 1.5c.443 1.362 .864 2.295 1.262 2.8c.597 .759 2 .993 2.567 .237c1.615 -2.127 2.671 -5.637 2.671 -10.537c0 -3.74 -1.908 -5 -4 -5c-1.423 0 -2.92 .911 -4 1.5\" /> <path d=\"M12 5.5l3 1.5\" />", "device-desktop": "<path d=\"M3 5a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10\" /> <path d=\"M7 20h10\" /> <path d=\"M9 16v4\" /> <path d=\"M15 16v4\" />", "device-floppy": "<path d=\"M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2\" /> <path d=\"M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M14 4l0 4l-6 0l0 -4\" />", "device-gamepad-2": "<path d=\"M12 5h3.5a5 5 0 0 1 0 10h-5.5l-4.015 4.227a2.3 2.3 0 0 1 -3.923 -2.035l1.634 -8.173a5 5 0 0 1 4.904 -4.019h3.4\" /> <path d=\"M14 15l4.07 4.284a2.3 2.3 0 0 0 3.925 -2.023l-1.6 -8.232\" /> <path d=\"M8 9v2\" /> <path d=\"M7 10h2\" /> <path d=\"M14 10h2\" />", "device-laptop": "<path d=\"M3 19l18 0\" /> <path d=\"M5 7a1 1 0 0 1 1 -1h12a1 1 0 0 1 1 1v8a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1l0 -8\" />", "device-mobile-message": "<path d=\"M11 3h10v8h-3l-4 2v-2h-3l0 -8\" /> <path d=\"M15 16v4a1 1 0 0 1 -1 1h-8a1 1 0 0 1 -1 -1v-14a1 1 0 0 1 1 -1h2\" /> <path d=\"M10 18v.01\" />", "device-watch": "<path d=\"M6 9a3 3 0 0 1 3 -3h6a3 3 0 0 1 3 3v6a3 3 0 0 1 -3 3h-6a3 3 0 0 1 -3 -3v-6\" /> <path d=\"M9 18v3h6v-3\" /> <path d=\"M9 6v-3h6v3\" />", "diamond": "<path d=\"M6 5h12l3 5l-8.5 9.5a.7 .7 0 0 1 -1 0l-8.5 -9.5l3 -5\" /> <path d=\"M10 12l-2 -2.2l.6 -1\" />", "dog": "<path d=\"M11 5h2\" /> <path d=\"M19 12c-.667 5.333 -2.333 8 -5 8h-4c-2.667 0 -4.333 -2.667 -5 -8\" /> <path d=\"M11 16c0 .667 .333 1 1 1s1 -.333 1 -1h-2\" /> <path d=\"M12 18v2\" /> <path d=\"M10 11v.01\" /> <path d=\"M14 11v.01\" /> <path d=\"M5 4l6 .97l-6.238 6.688a1.021 1.021 0 0 1 -1.41 .111a.953 .953 0 0 1 -.327 -.954l1.975 -6.815\" /> <path d=\"M19 4l-6 .97l6.238 6.688c.358 .408 .989 .458 1.41 .111a.953 .953 0 0 0 .327 -.954l-1.975 -6.815\" />", "dots": "<path d=\"M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "droplet": "<path d=\"M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546\" />", "droplets": "<path d=\"M4.072 20.3a2.999 2.999 0 0 0 3.856 0a3.002 3.002 0 0 0 .67 -3.798l-2.095 -3.227a.6 .6 0 0 0 -1.005 0l-2.098 3.227a3.003 3.003 0 0 0 .671 3.798\" /> <path d=\"M16.072 20.3a2.999 2.999 0 0 0 3.856 0a3.002 3.002 0 0 0 .67 -3.798l-2.095 -3.227a.6 .6 0 0 0 -1.005 0l-2.098 3.227a3.003 3.003 0 0 0 .671 3.798\" /> <path d=\"M10.072 10.3a2.999 2.999 0 0 0 3.856 0a3.002 3.002 0 0 0 .67 -3.798l-2.095 -3.227a.6 .6 0 0 0 -1.005 0l-2.098 3.227a3.003 3.003 0 0 0 .671 3.798l.001 0\" />", "dumbbell": "<path d=\"M7.026 9.61l-.95 -4.18a2 2 0 0 1 1.95 -2.43h8a2 2 0 0 1 2 2.43l-1 4.2\" /> <path d=\"M9.026 17.001h6\" /> <path d=\"M18.906 20.06a7.92 7.92 0 0 0 1 -5.33a8 8 0 1 0 -14.77 5.33a2 2 0 0 0 1.71 .94h10.36a2 2 0 0 0 1.7 -.94\" />", "egg": "<path d=\"M19 14.083c0 4.154 -2.966 6.74 -7 6.917c-4.2 0 -7 -2.763 -7 -6.917c0 -5.538 3.5 -11.09 7 -11.083c3.5 .007 7 5.545 7 11.083\" />", "engine": "<path d=\"M3 10v6\" /> <path d=\"M12 5v3\" /> <path d=\"M10 5h4\" /> <path d=\"M5 13h-2\" /> <path d=\"M6 10h2l2 -2h3.382a1 1 0 0 1 .894 .553l1.448 2.894a1 1 0 0 0 .894 .553h1.382v-2h2a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-2v-2h-3v2a1 1 0 0 1 -1 1h-3.465a1 1 0 0 1 -.832 -.445l-1.703 -2.555h-2v-6\" />", "eyeglass": "<path d=\"M8 4h-2l-3 10\" /> <path d=\"M16 4h2l3 10\" /> <path d=\"M10 16l4 0\" /> <path d=\"M21 16.5a3.5 3.5 0 0 1 -7 0v-2.5h7v2.5\" /> <path d=\"M10 16.5a3.5 3.5 0 0 1 -7 0v-2.5h7v2.5\" />", "fish": "<path d=\"M16.69 7.44a6.973 6.973 0 0 0 -1.69 4.56c0 1.747 .64 3.345 1.699 4.571\" /> <path d=\"M2 9.504c7.715 8.647 14.75 10.265 20 2.498c-5.25 -7.761 -12.285 -6.142 -20 2.504\" /> <path d=\"M18 11v.01\" /> <path d=\"M11.5 10.5c-.667 1 -.667 2 0 3\" />", "flag": "<path d=\"M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0v-9\" /> <path d=\"M5 21v-7\" />", "flame": "<path d=\"M12 10.941c2.333 -3.308 .167 -7.823 -1 -8.941c0 3.395 -2.235 5.299 -3.667 6.706c-1.43 1.408 -2.333 3.294 -2.333 5.588c0 3.704 3.134 6.706 7 6.706c3.866 0 7 -3.002 7 -6.706c0 -1.712 -1.232 -4.403 -2.333 -5.588c-2.084 3.353 -3.257 3.353 -4.667 2.235\" />", "folder": "<path d=\"M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2\" />", "fridge": "<path d=\"M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14\" /> <path d=\"M5 10h14\" /> <path d=\"M9 13v3\" /> <path d=\"M9 6v1\" />", "friends": "<path d=\"M5 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M5 22v-5l-1 -1v-4a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4l-1 1v5\" /> <path d=\"M15 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 22v-4h-2l2 -6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1l2 6h-2v4\" />", "gas-station": "<path d=\"M14 11h1a2 2 0 0 1 2 2v3a1.5 1.5 0 0 0 3 0v-7l-3 -3\" /> <path d=\"M4 20v-14a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v14\" /> <path d=\"M3 20l12 0\" /> <path d=\"M18 7v1a1 1 0 0 0 1 1h1\" /> <path d=\"M4 11l10 0\" />", "glass-full": "<path d=\"M8 21l8 0\" /> <path d=\"M12 15l0 6\" /> <path d=\"M17 3l1 7c0 3.012 -2.686 5 -6 5s-6 -1.988 -6 -5l1 -7h10\" /> <path d=\"M6 10a5 5 0 0 1 6 0a5 5 0 0 0 6 0\" />", "hammer": "<path d=\"M11.414 10l-7.383 7.418a2.091 2.091 0 0 0 0 2.967a2.11 2.11 0 0 0 2.976 0l7.407 -7.385\" /> <path d=\"M18.121 15.293l2.586 -2.586a1 1 0 0 0 0 -1.414l-7.586 -7.586a1 1 0 0 0 -1.414 0l-2.586 2.586a1 1 0 0 0 0 1.414l7.586 7.586a1 1 0 0 0 1.414 0\" />", "hand-finger": "<path d=\"M8 13v-8.5a1.5 1.5 0 0 1 3 0v7.5\" /> <path d=\"M11 11.5v-2a1.5 1.5 0 1 1 3 0v2.5\" /> <path d=\"M14 10.5a1.5 1.5 0 0 1 3 0v1.5\" /> <path d=\"M17 11.5a1.5 1.5 0 0 1 3 0v4.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47\" />", "hanger": "<path d=\"M14 6a2 2 0 1 0 -4 0c0 1.667 .67 3 2 4h-.008l7.971 4.428a2 2 0 0 1 1.029 1.749v.823a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-.823a2 2 0 0 1 1.029 -1.749l7.971 -4.428\" />", "headphones": "<path d=\"M4 15a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-1a2 2 0 0 1 -2 -2l0 -3\" /> <path d=\"M15 15a2 2 0 0 1 2 -2h1a2 2 0 0 1 2 2v3a2 2 0 0 1 -2 2h-1a2 2 0 0 1 -2 -2l0 -3\" /> <path d=\"M4 15v-3a8 8 0 0 1 16 0v3\" />", "heart": "<path d=\"M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572\" />", "heart-handshake": "<path d=\"M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572\" /> <path d=\"M12 6l-3.293 3.293a1 1 0 0 0 0 1.414l.543 .543c.69 .69 1.81 .69 2.5 0l1 -1a3.182 3.182 0 0 1 4.5 0l2.25 2.25\" /> <path d=\"M12.5 15.5l2 2\" /> <path d=\"M15 13l2 2\" />", "heartbeat": "<path d=\"M19.5 13.572l-7.5 7.428l-2.896 -2.868m-6.117 -8.104a5 5 0 0 1 9.013 -3.022a5 5 0 1 1 7.5 6.572\" /> <path d=\"M3 13h2l2 3l2 -6l1 3h3\" />", "home-dollar": "<path d=\"M19 10l-7 -7l-9 9h2v7a2 2 0 0 0 2 2h6\" /> <path d=\"M9 21v-6a2 2 0 0 1 2 -2h2c.387 0 .748 .11 1.054 .3\" /> <path d=\"M21 15h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5\" /> <path d=\"M19 21v1m0 -8v1\" />", "hourglass": "<path d=\"M6.5 7h11\" /> <path d=\"M6.5 17h11\" /> <path d=\"M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1\" /> <path d=\"M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1\" />", "ice-cream-2": "<path d=\"M17.657 11a6 6 0 1 0 -11.315 0\" /> <path d=\"M6.342 11l5.658 11l5.657 -11l-11.315 0\" />", "id": "<path d=\"M3 7a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v10a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3l0 -10\" /> <path d=\"M7 10a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 8l2 0\" /> <path d=\"M15 12l2 0\" /> <path d=\"M7 16l10 0\" />", "jacket": "<path d=\"M16 3l-4 5l-4 -5\" /> <path d=\"M12 19a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2v-8.172a2 2 0 0 1 .586 -1.414l.828 -.828a2 2 0 0 0 .586 -1.414v-2.172a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v2.172a2 2 0 0 0 .586 1.414l.828 .828a2 2 0 0 1 .586 1.414v8.172a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2\" /> <path d=\"M20 13h-3a1 1 0 0 0 -1 1v2a1 1 0 0 0 1 1h3\" /> <path d=\"M4 17h3a1 1 0 0 0 1 -1v-2a1 1 0 0 0 -1 -1h-3\" /> <path d=\"M12 19v-11\" />", "key": "<path d=\"M16.555 3.843l3.602 3.602a2.877 2.877 0 0 1 0 4.069l-2.643 2.643a2.877 2.877 0 0 1 -4.069 0l-.301 -.301l-6.558 6.558a2 2 0 0 1 -1.239 .578l-.175 .008h-1.172a1 1 0 0 1 -.993 -.883l-.007 -.117v-1.172a2 2 0 0 1 .467 -1.284l.119 -.13l.414 -.414h2v-2h2v-2l2.144 -2.144l-.301 -.301a2.877 2.877 0 0 1 0 -4.069l2.643 -2.643a2.877 2.877 0 0 1 4.069 0\" /> <path d=\"M15 9h.01\" />", "license": "<path d=\"M15 21h-9a3 3 0 0 1 -3 -3v-1h10v2a2 2 0 0 0 4 0v-14a2 2 0 1 1 2 2h-2m2 -4h-11a3 3 0 0 0 -3 3v11\" /> <path d=\"M9 7l4 0\" /> <path d=\"M9 11l4 0\" />", "lock": "<path d=\"M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6\" /> <path d=\"M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0\" /> <path d=\"M8 11v-4a4 4 0 1 1 8 0v4\" />", "mail": "<path d=\"M3 7a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-10\" /> <path d=\"M3 7l9 6l9 -6\" />", "map-pin": "<path d=\"M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" /> <path d=\"M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0\" />", "massage": "<path d=\"M3 17a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M8 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M4 22l4 -2v-3h12\" /> <path d=\"M11 20h9\" /> <path d=\"M8 14l3 -2l1 -4c3 1 3 4 3 6\" />", "meat": "<path d=\"M13.62 8.382l1.966 -1.967a2 2 0 1 1 3.414 -1.415a2 2 0 1 1 -1.413 3.414l-1.82 1.821\" /> <path d=\"M5.904 18.596c2.733 2.734 5.9 4 7.07 2.829c1.172 -1.172 -.094 -4.338 -2.828 -7.071c-2.733 -2.734 -5.9 -4 -7.07 -2.829c-1.172 1.172 .094 4.338 2.828 7.071\" /> <path d=\"M7.5 16l1 1\" /> <path d=\"M12.975 21.425c3.905 -3.906 4.855 -9.288 2.121 -12.021c-2.733 -2.734 -8.115 -1.784 -12.02 2.121\" />", "milk": "<path d=\"M8 6h8v-2a1 1 0 0 0 -1 -1h-6a1 1 0 0 0 -1 1v2\" /> <path d=\"M16 6l1.094 1.759a6 6 0 0 1 .906 3.17v8.071a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-8.071a6 6 0 0 1 .906 -3.17l1.094 -1.759\" /> <path d=\"M10 16a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M10 10h4\" />", "moped": "<path d=\"M16 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M5 16v1a2 2 0 0 0 4 0v-5h-3a3 3 0 0 0 -3 3v1h10a6 6 0 0 1 5 -4v-5a2 2 0 0 0 -2 -2h-1\" /> <path d=\"M6 9l3 0\" />", "motorbike": "<path d=\"M2 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M16 16a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" /> <path d=\"M7.5 14h5l4 -4h-10.5m1.5 4l4 -4\" /> <path d=\"M13 6h2l1.5 3l2 4\" />", "movie": "<path d=\"M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\" /> <path d=\"M8 4l0 16\" /> <path d=\"M16 4l0 16\" /> <path d=\"M4 8l4 0\" /> <path d=\"M4 16l4 0\" /> <path d=\"M4 12l16 0\" /> <path d=\"M16 8l4 0\" /> <path d=\"M16 16l4 0\" />", "music": "<path d=\"M3 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" /> <path d=\"M13 17a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" /> <path d=\"M9 17v-13h10v13\" /> <path d=\"M9 8h10\" />", "paint": "<path d=\"M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v2a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -2\" /> <path d=\"M19 6h1a2 2 0 0 1 2 2a5 5 0 0 1 -5 5l-5 0v2\" /> <path d=\"M10 16a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -4\" />", "palette": "<path d=\"M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25\" /> <path d=\"M7.5 10.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M11.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M15.5 10.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "parking": "<path d=\"M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14\" /> <path d=\"M10 16v-8h2.667c.736 0 1.333 .895 1.333 2s-.597 2 -1.333 2h-2.667\" />", "paw": "<path d=\"M14.7 13.5c-1.1 -2 -1.441 -2.5 -2.7 -2.5c-1.259 0 -1.736 .755 -2.836 2.747c-.942 1.703 -2.846 1.845 -3.321 3.291c-.097 .265 -.145 .677 -.143 .962c0 1.176 .787 2 1.8 2c1.259 0 3 -1 4.5 -1s3.241 1 4.5 1c1.013 0 1.8 -.823 1.8 -2c0 -.285 -.049 -.697 -.146 -.962c-.475 -1.451 -2.512 -1.835 -3.454 -3.538\" /> <path d=\"M20.188 8.082a1.039 1.039 0 0 0 -.406 -.082h-.015c-.735 .012 -1.56 .75 -1.993 1.866c-.519 1.335 -.28 2.7 .538 3.052c.129 .055 .267 .082 .406 .082c.739 0 1.575 -.742 2.011 -1.866c.516 -1.335 .273 -2.7 -.54 -3.052l-.001 0\" /> <path d=\"M9.474 9c.055 0 .109 0 .163 -.011c.944 -.128 1.533 -1.346 1.32 -2.722c-.203 -1.297 -1.047 -2.267 -1.932 -2.267c-.055 0 -.109 0 -.163 .011c-.944 .128 -1.533 1.346 -1.32 2.722c.204 1.293 1.048 2.267 1.933 2.267\" /> <path d=\"M16.456 6.733c.214 -1.376 -.375 -2.594 -1.32 -2.722a1.164 1.164 0 0 0 -.162 -.011c-.885 0 -1.728 .97 -1.93 2.267c-.214 1.376 .375 2.594 1.32 2.722c.054 .007 .108 .011 .162 .011c.885 0 1.73 -.974 1.93 -2.267\" /> <path d=\"M5.69 12.918c.816 -.352 1.054 -1.719 .536 -3.052c-.436 -1.124 -1.271 -1.866 -2.009 -1.866c-.14 0 -.277 .027 -.407 .082c-.816 .352 -1.054 1.719 -.536 3.052c.436 1.124 1.271 1.866 2.009 1.866c.14 0 .277 -.027 .407 -.082\" />", "pencil": "<path d=\"M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4\" /> <path d=\"M13.5 6.5l4 4\" />", "percentage": "<path d=\"M16 17a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M6 7a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M6 18l12 -12\" />", "perfume": "<path d=\"M10 6v3\" /> <path d=\"M14 6v3\" /> <path d=\"M5 11a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -8\" /> <path d=\"M10 15a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M9 3h6v3h-6l0 -3\" />", "phone": "<path d=\"M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2\" />", "pill": "<path d=\"M4.5 12.5l8 -8a4.94 4.94 0 0 1 7 7l-8 8a4.94 4.94 0 0 1 -7 -7\" /> <path d=\"M8.5 8.5l7 7\" />", "pizza": "<path d=\"M12 21.5c-3.04 0 -5.952 -.714 -8.5 -1.983l8.5 -16.517l8.5 16.517a19.09 19.09 0 0 1 -8.5 1.983\" /> <path d=\"M5.38 15.866a14.94 14.94 0 0 0 6.815 1.634a14.944 14.944 0 0 0 6.502 -1.479\" /> <path d=\"M13 11.01v-.01\" /> <path d=\"M11 14v-.01\" />", "plane": "<path d=\"M16 10h4a2 2 0 0 1 0 4h-4l-4 7h-3l2 -7h-4l-2 2h-3l2 -4l-2 -4h3l2 2h4l-2 -7h3l4 7\" />", "plant-2": "<path d=\"M2 9a10 10 0 1 0 20 0\" /> <path d=\"M12 19a10 10 0 0 1 10 -10\" /> <path d=\"M2 9a10 10 0 0 1 10 10\" /> <path d=\"M12 4a9.7 9.7 0 0 1 2.99 7.5\" /> <path d=\"M9.01 11.5a9.7 9.7 0 0 1 2.99 -7.5\" />", "player-play": "<path d=\"M7 4v16l13 -8l-13 -8\" />", "printer": "<path d=\"M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2\" /> <path d=\"M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4\" /> <path d=\"M7 15a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2l0 -4\" />", "razor": "<path d=\"M7 3h10v4h-10l0 -4\" /> <path d=\"M12 7v4\" /> <path d=\"M12 11a2 2 0 0 1 2 2v6a2 2 0 1 1 -4 0v-6a2 2 0 0 1 2 -2\" />", "receipt": "<path d=\"M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2m4 -14h6m-6 4h6m-2 4h2\" />", "recycle": "<path d=\"M12 17l-2 2l2 2\" /> <path d=\"M10 19h9a2 2 0 0 0 1.75 -2.75l-.55 -1\" /> <path d=\"M8.536 11l-.732 -2.732l-2.732 .732\" /> <path d=\"M7.804 8.268l-4.5 7.794a2 2 0 0 0 1.506 2.89l1.141 .024\" /> <path d=\"M15.464 11l2.732 .732l.732 -2.732\" /> <path d=\"M18.196 11.732l-4.5 -7.794a2 2 0 0 0 -3.256 -.14l-.591 .976\" />", "report-money": "<path d=\"M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2\" /> <path d=\"M9 5a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2\" /> <path d=\"M14 11h-2.5a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-2.5\" /> <path d=\"M12 17v1m0 -8v1\" />", "road": "<path d=\"M4 19l4 -14\" /> <path d=\"M16 5l4 14\" /> <path d=\"M12 8v-2\" /> <path d=\"M12 13v-2\" /> <path d=\"M12 18v-2\" />", "run": "<path d=\"M11.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M4 17l5 1l.75 -1.5\" /> <path d=\"M15 21v-4l-4 -3l1 -6\" /> <path d=\"M7 12v-3l5 -1l3 3l3 1\" />", "school": "<path d=\"M22 9l-10 -4l-10 4l10 4l10 -4v6\" /> <path d=\"M6 10.6v5.4a6 3 0 0 0 12 0v-5.4\" />", "shield-check": "<path d=\"M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06\" /> <path d=\"M15 19l2 2l4 -4\" />", "shoe": "<path d=\"M4 6h5.426a1 1 0 0 1 .863 .496l1.064 1.823a3 3 0 0 0 1.896 1.407l4.677 1.114a4 4 0 0 1 3.074 3.89v2.27a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-10a1 1 0 0 1 1 -1\" /> <path d=\"M14 13l1 -2\" /> <path d=\"M8 18v-1a4 4 0 0 0 -4 -4h-1\" /> <path d=\"M10 12l1.5 -3\" />", "sock": "<path d=\"M13 3v6l4.798 5.142a4 4 0 0 1 -5.441 5.86l-6.736 -6.41a2 2 0 0 1 -.621 -1.451v-9.141h8\" /> <path d=\"M7.895 15.768c.708 -.721 1.105 -1.677 1.105 -2.768a4 4 0 0 0 -4 -4\" />", "sofa": "<path d=\"M4 11a2 2 0 0 1 2 2v1h12v-1a2 2 0 1 1 4 0v5a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-5a2 2 0 0 1 2 -2\" /> <path d=\"M4 11v-3a3 3 0 0 1 3 -3h10a3 3 0 0 1 3 3v3\" /> <path d=\"M12 5v9\" />", "spray": "<path d=\"M4 12a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2l0 -7\" /> <path d=\"M6 10v-4a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4\" /> <path d=\"M15 7h.01\" /> <path d=\"M18 9h.01\" /> <path d=\"M18 5h.01\" /> <path d=\"M21 3h.01\" /> <path d=\"M21 7h.01\" /> <path d=\"M21 11h.01\" /> <path d=\"M10 7h1\" />", "star": "<path d=\"M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245\" />", "steering-wheel": "<path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" /> <path d=\"M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M12 14l0 7\" /> <path d=\"M10 12l-6.75 -2\" /> <path d=\"M14 12l6.75 -2\" />", "stethoscope": "<path d=\"M6 4h-1a2 2 0 0 0 -2 2v3.5a5.5 5.5 0 0 0 11 0v-3.5a2 2 0 0 0 -2 -2h-1\" /> <path d=\"M8 15a6 6 0 1 0 12 0v-3\" /> <path d=\"M11 3v2\" /> <path d=\"M6 3v2\" /> <path d=\"M18 10a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" />", "swimming": "<path d=\"M15 9a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M6 11l4 -2l3.5 3l-1.5 2\" /> <path d=\"M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1 -.25\" />", "tag": "<path d=\"M6.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" /> <path d=\"M3 6v5.172a2 2 0 0 0 .586 1.414l7.71 7.71a2.41 2.41 0 0 0 3.408 0l5.592 -5.592a2.41 2.41 0 0 0 0 -3.408l-7.71 -7.71a2 2 0 0 0 -1.414 -.586h-5.172a3 3 0 0 0 -3 3\" />", "tent": "<path d=\"M11 14l4 6h6l-9 -16l-9 16h6l4 -6\" />", "ticket": "<path d=\"M15 5l0 2\" /> <path d=\"M15 11l0 2\" /> <path d=\"M15 17l0 2\" /> <path d=\"M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-3a2 2 0 0 0 0 -4v-3a2 2 0 0 1 2 -2\" />", "tie": "<path d=\"M12 22l4 -4l-2.5 -11l.993 -2.649a1 1 0 0 0 -.936 -1.351h-3.114a1 1 0 0 0 -.936 1.351l.993 2.649l-2.5 11l4 4\" /> <path d=\"M10.5 7h3l5 5.5\" />", "tool": "<path d=\"M7 10h3v-3l-3.5 -3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1 -3 3l-6 -6a6 6 0 0 1 -8 -8l3.5 3.5\" />", "tools-kitchen": "<path d=\"M4 3h8l-1 9h-6l-1 -9\" /> <path d=\"M7 18h2v3h-2l0 -3\" /> <path d=\"M20 3v12h-5c-.023 -3.681 .184 -7.406 5 -12\" /> <path d=\"M20 15v6h-1v-3\" /> <path d=\"M8 12l0 6\" />", "train": "<path d=\"M21 13c0 -3.87 -3.37 -7 -10 -7h-8\" /> <path d=\"M3 15h16a2 2 0 0 0 2 -2\" /> <path d=\"M3 6v5h17.5\" /> <path d=\"M3 11v4\" /> <path d=\"M8 11v-5\" /> <path d=\"M13 11v-4.5\" /> <path d=\"M3 19h18\" />", "trash": "<path d=\"M4 7l16 0\" /> <path d=\"M10 11l0 6\" /> <path d=\"M14 11l0 6\" /> <path d=\"M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12\" /> <path d=\"M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3\" />", "truck-delivery": "<path d=\"M5 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M15 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" /> <path d=\"M5 17h-2v-4m-1 -8h11v12m-4 0h6m4 0h2v-6h-8m0 -5h5l3 5\" /> <path d=\"M3 9l4 0\" />", "umbrella": "<path d=\"M4 12a8 8 0 0 1 16 0l-16 0\" /> <path d=\"M12 12v6a2 2 0 0 0 4 0\" />", "users": "<path d=\"M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" /> <path d=\"M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\" /> <path d=\"M16 3.13a4 4 0 0 1 0 7.75\" /> <path d=\"M21 21v-2a4 4 0 0 0 -3 -3.85\" />", "vaccine": "<path d=\"M17 3l4 4\" /> <path d=\"M19 5l-4.5 4.5\" /> <path d=\"M11.5 6.5l6 6\" /> <path d=\"M16.5 11.5l-6.5 6.5h-4v-4l6.5 -6.5\" /> <path d=\"M7.5 12.5l1.5 1.5\" /> <path d=\"M10.5 9.5l1.5 1.5\" /> <path d=\"M3 21l3 -3\" />", "vacuum-cleaner": "<path d=\"M21 12a9 9 0 1 1 -18 0a9 9 0 0 1 18 0\" /> <path d=\"M14 9a2 2 0 1 1 -4 0a2 2 0 0 1 4 0\" /> <path d=\"M12 16h.01\" />", "wash-machine": "<path d=\"M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14\" /> <path d=\"M8 14a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" /> <path d=\"M8 6h.01\" /> <path d=\"M11 6h.01\" /> <path d=\"M14 6h2\" /> <path d=\"M8 14c1.333 -.667 2.667 -.667 4 0c1.333 .667 2.667 .667 4 0\" />", "wifi": "<path d=\"M12 18l.01 0\" /> <path d=\"M9.172 15.172a4 4 0 0 1 5.656 0\" /> <path d=\"M6.343 12.343a8 8 0 0 1 11.314 0\" /> <path d=\"M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0\" />", "yoga": "<path d=\"M4 20h4l1.5 -3\" /> <path d=\"M17 20l-1 -5h-5l1 -7\" /> <path d=\"M4 10l4 -1l4 -1l4 1.5l4 1.5\" /> <path d=\"M10.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" />", "discount": "<path d=\"M9 15l6 -6\" /> <path d=\"M9 9.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M14 14.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0\" fill=\"currentColor\" /> <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />", "list-check": "<path d=\"M3.5 5.5l1.5 1.5l2.5 -2.5\" /> <path d=\"M3.5 11.5l1.5 1.5l2.5 -2.5\" /> <path d=\"M3.5 17.5l1.5 1.5l2.5 -2.5\" /> <path d=\"M11 6l9 0\" /> <path d=\"M11 12l9 0\" /> <path d=\"M11 18l9 0\" />"};
 TI['eye'] = '<path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /> <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />';
 TI['eye-off'] = '<path d="M10.585 10.587a2 2 0 0 0 2.829 2.828" /> <path d="M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87" /> <path d="M3 3l18 18" />';
+Object.assign(TI, {"home-heart": "<path d=\"M21 12l-9 -9l-9 9h2v7a2 2 0 0 0 2 2h6\" /> <path d=\"M9 21v-6a2 2 0 0 1 2 -2h2c.39 0 .754 .112 1.061 .304\" /> <path d=\"M19 21.5l2.518 -2.58a1.74 1.74 0 0 0 0 -2.413a1.627 1.627 0 0 0 -2.346 0l-.168 .172l-.168 -.172a1.627 1.627 0 0 0 -2.346 0a1.74 1.74 0 0 0 0 2.412l2.51 2.59l0 -.009\" />", "user-plus": "<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\" /> <path d=\"M16 19h6\" /> <path d=\"M19 16v6\" /> <path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\" />", "door-exit": "<path d=\"M13 12v.01\" /> <path d=\"M3 21h18\" /> <path d=\"M5 21v-16a2 2 0 0 1 2 -2h7.5m2.5 10.5v7.5\" /> <path d=\"M14 7h7m-3 -3l3 3l-3 3\" />", "brand-whatsapp": "<path d=\"M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9\" /> <path d=\"M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1\" />", "copy": "<path d=\"M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666\" /> <path d=\"M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1\" />", "archive": "<path d=\"M3 6a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2\" /> <path d=\"M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-10\" /> <path d=\"M10 12l4 0\" />", "archive-off": "<path d=\"M8 4h11a2 2 0 1 1 0 4h-7m-4 0h-3a2 2 0 0 1 -.826 -3.822\" /> <path d=\"M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 1.824 -1.18m.176 -3.82v-7\" /> <path d=\"M10 12h2\" /> <path d=\"M3 3l18 18\" />", "photo-plus": "<path d=\"M15 8h.01\" /> <path d=\"M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5\" /> <path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l4 4\" /> <path d=\"M14 14l1 -1c.67 -.644 1.45 -.824 2.182 -.54\" /> <path d=\"M16 19h6\" /> <path d=\"M19 16v6\" />", "sum": "<path d=\"M18 16v2a1 1 0 0 1 -1 1h-11l6 -7l-6 -7h11a1 1 0 0 1 1 1v2\" />", "arrows-sort": "<path d=\"M3 9l4 -4l4 4m-4 -4v14\" /> <path d=\"M21 15l-4 4l-4 -4m4 4v-14\" />"});
 Object.assign(TI, {"home-2": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M5 12l-2 0l9 -9l9 9l-2 0\" />   <path d=\"M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7\" />   <path d=\"M10 12h4v4h-4l0 -4\" />", "list-details": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M13 5h8\" />   <path d=\"M13 9h5\" />   <path d=\"M13 15h8\" />   <path d=\"M13 19h5\" />   <path d=\"M3 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4\" />   <path d=\"M3 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4\" />", "circle": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />", "chevron-down": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M6 9l6 6l6 -6\" />", "chevron-up": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M6 15l6 -6l6 6\" />", "arrows-left-right": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M21 17l-18 0\" />   <path d=\"M6 10l-3 -3l3 -3\" />   <path d=\"M3 7l18 0\" />   <path d=\"M18 20l3 -3l-3 -3\" />", "file-upload": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M14 3v4a1 1 0 0 0 1 1h4\" />   <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" />   <path d=\"M12 11v6\" />   <path d=\"M9.5 13.5l2.5 -2.5l2.5 2.5\" />", "file-invoice": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M14 3v4a1 1 0 0 0 1 1h4\" />   <path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\" />   <path d=\"M9 7l1 0\" />   <path d=\"M9 13l6 0\" />   <path d=\"M13 17l2 0\" />", "target": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />   <path d=\"M7 12a5 5 0 1 0 10 0a5 5 0 1 0 -10 0\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />", "trees": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M16 5l3 3l-2 1l4 4l-3 1l4 4h-9\" />   <path d=\"M15 21l0 -3\" />   <path d=\"M8 13l-2 -2\" />   <path d=\"M8 12l2 -2\" />   <path d=\"M8 21v-13\" />   <path d=\"M5.824 16a3 3 0 0 1 -2.743 -3.69a3 3 0 0 1 .304 -4.833a3 3 0 0 1 4.615 -3.707a3 3 0 0 1 4.614 3.707a3 3 0 0 1 .305 4.833a3 3 0 0 1 -2.919 3.695h-4l-.176 -.005\" />", "adjustments-horizontal": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" />   <path d=\"M4 6l8 0\" />   <path d=\"M16 6l4 0\" />   <path d=\"M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" />   <path d=\"M4 12l2 0\" />   <path d=\"M10 12l10 0\" />   <path d=\"M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\" />   <path d=\"M4 18l11 0\" />   <path d=\"M19 18l1 0\" />", "wand": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M6 21l15 -15l-3 -3l-15 15l3 3\" />   <path d=\"M15 6l3 3\" />   <path d=\"M9 3a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2\" />   <path d=\"M19 13a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2\" />", "notes": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14\" />   <path d=\"M9 7l6 0\" />   <path d=\"M9 11l6 0\" />   <path d=\"M9 15l4 0\" />", "cloud-check": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M11 18.004h-4.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.388 0 2.585 .82 3.138 2.007\" />   <path d=\"M15 19l2 2l4 -4\" />", "shopping-cart-down": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\" />   <path d=\"M12.5 17h-6.5v-14h-2\" />   <path d=\"M6 5l14 1l-.859 6.011m-2.641 .989h-10.5\" />   <path d=\"M19 16v6\" />   <path d=\"M22 19l-3 3l-3 -3\" />", "arrows-up-down": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M7 3l0 18\" />   <path d=\"M10 6l-3 -3l-3 3\" />   <path d=\"M20 18l-3 3l-3 -3\" />   <path d=\"M17 21l0 -18\" />", "help": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />   <path d=\"M12 17l0 .01\" />   <path d=\"M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4\" />", "category": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M4 4h6v6h-6l0 -6\" />   <path d=\"M14 4h6v6h-6l0 -6\" />   <path d=\"M4 14h6v6h-6l0 -6\" />   <path d=\"M14 17a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" />", "backspace": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M20 6a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-11l-5 -5a1.5 1.5 0 0 1 0 -2l5 -5l11 0\" />   <path d=\"M12 10l4 4m0 -4l-4 4\" />", "user-circle": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />   <path d=\"M9 10a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\" />   <path d=\"M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855\" />", "palette": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M12 21a9 9 0 0 1 0 -18c4.97 0 9 3.582 9 8c0 1.06 -.474 2.078 -1.318 2.828c-.844 .75 -1.989 1.172 -3.182 1.172h-2.5a2 2 0 0 0 -1 3.75a1.3 1.3 0 0 1 -1 2.25\" />   <path d=\"M7.5 10.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />   <path d=\"M11.5 7.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />   <path d=\"M15.5 10.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />", "photo": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M15 8h.01\" />   <path d=\"M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12\" />   <path d=\"M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5\" />   <path d=\"M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3\" />", "id-badge-2": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M7 12h3v4h-3l0 -4\" />   <path d=\"M10 6h-6a1 1 0 0 0 -1 1v12a1 1 0 0 0 1 1h16a1 1 0 0 0 1 -1v-12a1 1 0 0 0 -1 -1h-6\" />   <path d=\"M10 4a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v3a1 1 0 0 1 -1 1h-2a1 1 0 0 1 -1 -1l0 -3\" />   <path d=\"M14 16h2\" />   <path d=\"M14 12h4\" />", "refresh": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\" />   <path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\" />", "circle-dot": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />", "square-rounded-check": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M9 12l2 2l4 -4\" />   <path d=\"M12 3c7.2 0 9 1.8 9 9c0 7.2 -1.8 9 -9 9c-7.2 0 -9 -1.8 -9 -9c0 -7.2 1.8 -9 9 -9\" />", "calendar-event": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12\" />   <path d=\"M16 3l0 4\" />   <path d=\"M8 3l0 4\" />   <path d=\"M4 11l16 0\" />   <path d=\"M8 15h2v2h-2l0 -2\" />", "alert-circle": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0\" />   <path d=\"M12 8v4\" />   <path d=\"M12 16h.01\" />", "chart-donut-3": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M12 3v5m4 4h5\" />   <path d=\"M8.929 14.582l-3.429 2.918\" />   <path d=\"M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" />   <path d=\"M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\" />", "calendar-stats": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4\" />   <path d=\"M18 14v4h4\" />   <path d=\"M14 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\" />   <path d=\"M15 3v4\" />   <path d=\"M7 3v4\" />   <path d=\"M3 11h16\" />", "layout-dashboard": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\" />   <path d=\"M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\" />   <path d=\"M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\" />   <path d=\"M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\" />", "currency-real": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M21 6h-4a3 3 0 0 0 0 6h1a3 3 0 0 1 0 6h-4\" />   <path d=\"M4 18v-12h3a3 3 0 1 1 0 6h-3c5.5 0 5 4 6 6\" />   <path d=\"M18 6v-2\" />   <path d=\"M17 20v-2\" />", "cash-banknote": "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\" />   <path d=\"M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0\" />   <path d=\"M3 8a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -8\" />   <path d=\"M18 12h.01\" />   <path d=\"M6 12h.01\" />"});
 const ti = (n, size = 20, extra = '') => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${TI[n] || TI['help-circle']}</svg>`;
 const ICON_CAT = { 'Casa': 'home', 'Contas da casa': 'bulb', 'Mercado e padaria': 'shopping-cart', 'Comer fora': 'tools-kitchen-2', 'Carro': 'car', 'Saúde': 'heartbeat', 'Vestuário': 'hanger', 'Beleza': 'sparkles', 'Casa e eletro': 'armchair', 'Variedades': 'shopping-bag', 'Eletrônicos': 'device-laptop', 'Assinaturas': 'calendar-repeat', 'Impostos e taxas': 'receipt-tax', 'Banco': 'building-bank', 'Dívidas': 'trending-down', 'Lazer': 'beach', 'Aporte no MEI': 'building-store', 'Outros': 'package', 'Salário': 'briefcase', '13º salário': 'gift', 'Rendimentos': 'trending-up', 'Outras entradas': 'coin', 'Saque-aniversário FGTS': 'pig-money', 'Retirada do MEI': 'building-store', 'Benefícios': 'ticket', 'Descontos e cashback': 'discount', 'Empréstimo': 'cash', 'Limite do cartão': 'credit-card', 'Adiantamento do FGTS': 'file-dollar', 'Investimento': 'pig-money' };
@@ -777,19 +786,8 @@ function seed() {
   const A = (id, nome, dono, tipo, banco, extra = {}) => Object.assign({ id, nome, dono, tipo, banco, chaves: [], upd: 1 }, extra);
   return {
     v: 1, eu: null, criado: Date.now(),
-    pessoas: [
-      { id: 'p1', nome: '', aliases: [] },
-      { id: 'p2', nome: '', aliases: [] },
-    ],
-    contas: [
-      A('g-sicredi', 'Sicredi', 'p1', 'conta', 'Sicredi'), A('g-nubank', 'Nubank', 'p1', 'conta', 'Nubank'), A('g-inter', 'Inter', 'p1', 'conta', 'Inter'),
-      A('g-mp', 'Mercado Pago', 'p1', 'conta', 'Mercado Pago'), A('g-nucard', 'Cartão Nubank', 'p1', 'cartao', 'Nubank', { fech: null, venc: null, pagaPor: 'g-nubank' }),
-      A('g-caju', 'Caju', 'p1', 'beneficio', 'Caju', { saldoIni: 0 }),
-      A('m-sicredi', 'Sicredi', 'p2', 'conta', 'Sicredi'), A('m-nubank', 'Nubank', 'p2', 'conta', 'Nubank'), A('m-mp', 'Mercado Pago', 'p2', 'conta', 'Mercado Pago'),
-      A('m-nucard', 'Cartão Nubank', 'p2', 'cartao', 'Nubank', { fech: null, venc: null, pagaPor: 'm-nubank' }), A('m-bonus', 'BônusCred', 'p2', 'loja', 'BônusCred', { prazo: 30, pagChaves: ['BNC CADASTROS', 'BONUSPAGO'] }),
-      A('m-flash', 'Flash', 'p2', 'beneficio', 'Flash', { saldoIni: 0 }), A('m-shopee', 'Shopee', 'p2', 'loja', 'Shopee', { fech: null, venc: null, pagChaves: ['MAREE', 'SHPP BRASIL'] }),
-      A('m-riach', 'Riachuelo', 'p2', 'loja', 'Riachuelo', { fech: null, venc: null, pagChaves: ['MIDWAY'] }), A('m-mpcred', 'Mercado Pago Crédito', 'p2', 'loja', 'Mercado Pago', { cobra: 'parcelas', pagaPor: 'm-mp' }),
-    ],
+    pessoas: [],
+    contas: [],
     cats: {
       despesa: CATS_DESP.map(([nome, e, cor, subs]) => ({ nome, e, cor, subs: subs.slice(), i: ICON_CAT[nome] })),
       receita: CATS_REC.map(([nome, e, cor]) => ({ nome, e, cor, subs: [], i: ICON_CAT[nome] })),
@@ -832,19 +830,6 @@ function migra() {
   if (S.mig < 13) migra13();
   try { const a = conciliaFaturas(), b = pareiaTransf(); if (a || b) salvaLocal(); } catch (e) { console.warn(e); }
 }
-// regras de categoria de nomes de pessoas: guardadas só como código (o nome não fica no app publicado)
-const hashNome = s => { let x = 0x811c9dc5; for (const ch of s) { x ^= ch.charCodeAt(0); x = Math.imul(x, 0x01000193) >>> 0; } return x.toString(36); };
-const REGRAS_PRIV = { bfgwwu: ['Carro', 'Gasolina'], '1vu1mz2': ['Casa', 'Parcela do vendedor'] };
-function regrasPrivadas() {
-  let n = 0; const tem = new Set(S.regras.map(r => P.norm(r.k)));
-  for (const t of S.tx) {
-    if (t.del || t.travado || t.cat || t.tipo !== 'despesa') continue;
-    const W = P.norm(P.clean(t.desc || '').nome || t.nome || '').split(' ').filter(Boolean);
-    for (const k of [W.slice(0, 2).join(' '), W[0] || '']) { const r = k && REGRAS_PRIV[hashNome(k)]; if (!r) continue;
-      if (!tem.has(k)) { S.regras.push({ k, cat: r[0], sub: r[1], tipo: 'despesa', user: true, upd: Date.now() }); tem.add(k); n++; } break; }
-  }
-  return n;
-}
 // cartões: tipo de cobrança, fechamento do Nubank e Mercado Crédito em parcelas
 function migra13() {
   const agora = Date.now();
@@ -886,7 +871,7 @@ function migra12() {
       Object.assign(t, t.valor < 0 ? { tipo: 'despesa', cat: 'Aporte no MEI', sub: '' } : { tipo: 'receita', cat: 'Retirada do MEI', sub: '' }, { upd: agora });
     }
   }
-  regrasPrivadas(); reaplicaRegras();
+  reaplicaRegras();
   S.catsUpd = agora; S.mig = 12; salvaLocal();
 }
 // categorias novas e ícones (não mexe no que vocês já mudaram)
@@ -1028,10 +1013,10 @@ function movMes(c, mk) {
 // primeiro dia com dados da conta (extrato importado ou saldo informado)
 function inicioDados(c) { let d = c.saldoRef ? c.saldoRef.data : ''; if (c.desde && (!d || c.desde < d)) d = c.desde; for (const t of live()) if (t.conta === c.id && (!d || t.data < d)) d = t.data; return d; }
 const ultDiaMes = mk => P.iso(+mk.slice(0, 4), +mk.slice(5), new Date(+mk.slice(0, 4), +mk.slice(5), 0).getDate());
-const contasDoMes = mk => S.contas.filter(c => ['conta', 'invest', 'beneficio'].includes(c.tipo) && (V.quem === 'all' || c.dono === V.quem)).map(c => {
+const contasDoMes = mk => ordemContas(S.contas.filter(c => !c.arquivada && ['conta', 'invest', 'beneficio'].includes(c.tipo) && (V.quem === 'all' || c.dono === V.quem))).map(c => {
   const ini = inicioDados(c); if (ini && ultDiaMes(mk) < ini) return { c, s: null, m: null, semExtrato: true }; // antes do primeiro extrato: não inventa saldo
   const m = movMes(c, mk); return { c, s: m.fim, m }; });
-function totalContas(mk) { const L = contasDoMes(mk).filter(x => x.s != null); return L.length ? L.reduce((a, x) => a + x.s, 0) : null; }
+function totalContas(mk) { const L = contasDoMes(mk).filter(x => x.s != null && !x.c.foraTotal); return L.length ? L.reduce((a, x) => a + x.s, 0) : null; }
 // ícone de cada banco: sigla nas cores do banco
 const BANCOS = [
   [/NUBANK|^NU\b/, 'Nu', '#820AD1', null, 'nubank'], [/SICREDI/, 'Si', '#3FA110', null, 'sicredi'], [/INTER\b/, 'In', '#FF7A00', null, 'inter'], [/MERCADO ?PAGO/, 'MP', '#009EE3', null, 'mercado-pago'],
@@ -1040,19 +1025,41 @@ const BANCOS = [
   [/CAIXA/, 'Cx', '#005CA9'], [/BANCO DO BRASIL|^BB\b/, 'BB', '#F8D117', '#1B3D8F'], [/C6/, 'C6', '#242424'], [/PICPAY/, 'Pi', '#11C76F'],
   [/PAGBANK|PAGSEGURO/, 'Pg', '#1BB99A'], [/ALELO/, 'Al', '#007858'], [/SODEXO|PLUXEE/, 'Px', '#1E2A78'], [/VR\b/, 'VR', '#00953B'], [/TICKET/, 'Ti', '#E4002B'],
 ];
+// biblioteca de logos (fotos que vêm com o app) e catálogo: o que cada instituição já preenche no cadastro
+const LOGOS = ['nubank', 'inter', 'sicredi', 'mercado-pago', 'caju', 'flash', 'bonuscred', 'shopee', 'riachuelo'];
+const LOGO_NOME = { nubank: 'Nubank', inter: 'Inter', sicredi: 'Sicredi', 'mercado-pago': 'Mercado Pago', caju: 'Caju', flash: 'Flash', bonuscred: 'BônusCred', shopee: 'Shopee', riachuelo: 'Riachuelo' };
+const CATALOGO = {
+  nubank: { conta: { tipo: 'conta' }, cartao: { nome: 'Cartão Nubank', fechNu: true } },
+  inter: { conta: { tipo: 'conta' }, cartao: { nome: 'Cartão Inter' } },
+  sicredi: { conta: { tipo: 'conta' }, cartao: { nome: 'Cartão Sicredi' } },
+  'mercado-pago': { conta: { tipo: 'conta' }, cartao: { nome: 'Cartão Mercado Pago' }, credito: { nome: 'Mercado Crédito', cobra: 'parcelas', pagChaves: ['MERCADO CREDITO'] } },
+  caju: { conta: { tipo: 'beneficio' } }, flash: { conta: { tipo: 'beneficio' } },
+  bonuscred: { credito: { nome: 'BônusCred', cobra: 'prazo', prazo: 30, pagChaves: ['BNC CADASTROS', 'BONUSPAGO'] } },
+  shopee: { credito: { nome: 'Shopee', cobra: 'fatura', venc: 6, fech: 26, pagChaves: ['SHPP BRASIL', 'MAREE'] } },
+  riachuelo: { credito: { nome: 'Riachuelo', cobra: 'fatura', pagChaves: ['MIDWAY'] }, cartao: { nome: 'Cartão Riachuelo', pagChaves: ['MIDWAY'] } },
+};
+// grupos: contas (conta, benefício, cofrinho), cartões de crédito e crédito em app e loja
+const grupoDe = c => !c ? null : c.tipo === 'cartao' ? 'cartao' : c.tipo === 'loja' ? 'credito' : 'conta';
+const GRUPOS = { conta: { nome: 'Contas', um: 'conta', ic: 'building-bank', cor: '#5E8A22' }, cartao: { nome: 'Cartões de crédito', um: 'cartão de crédito', ic: 'credit-card', cor: '#2F6DB5' }, credito: { nome: 'Crédito em app e loja', um: 'crédito em app ou loja', ic: 'shopping-bag', cor: '#B8860B' } };
+const ativa = c => !!c && !c.arquivada;
+const ativas = () => S.contas.filter(ativa);
+const ordemContas = L => L.slice().sort((a, b) => (a.ordem ?? 999) - (b.ordem ?? 999));
 function logoBanco(c, size = 40) {
   const N = P.norm((c && (c.banco || c.nome)) || '');
-  const b = BANCOS.find(([re]) => re.test(N));
+  const b = bancoDe(c);
   const sig = b ? b[1] : (N.replace(/[^A-Z0-9 ]/g, '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2) || '?');
   const bg = b ? b[2] : '#6F7581', fg = b && b[3] ? b[3] : '#fff';
-  const img = c && c.icone ? c.icone : b && b[4] ? 'logo-' + b[4] + '.png' : '';
+  const img = c && c.icone ? c.icone : c && c.logo ? 'logo-' + c.logo + '.png' : b && b[4] ? 'logo-' + b[4] + '.png' : '';
   return `<div class="ic bk" style="width:${size}px;height:${size}px;background:${bg};color:${fg};font-size:${Math.round(size * 0.34)}px;border-radius:${Math.round(size * .32)}px">${esc(sig)}${img ? `<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</div>`;
 }
 const TIPOS_CONTA = { conta: 'Conta', cartao: 'Cartão de crédito', loja: 'Crédito em loja', beneficio: 'Benefício', invest: 'Investimento / cofrinho' };
 const pessoa = id => S.pessoas.find(p => p.id === id);
-const pnome = id => ((pessoa(id) || {}).nome || '').split(' ')[0] || (id === 'p1' ? 'Pessoa 1' : 'Pessoa 2');
+const pnome = id => id === 'casa' ? 'Casa' : ((pessoa(id) || {}).nome || '').split(' ')[0] || 'Pessoa ' + (S.pessoas.findIndex(p => p.id === id) + 1 || '');
+const quemOpts = () => [['all', 'Família'], ...S.pessoas.map(p => [p.id, pnome(p.id)])];
+const corPessoa = id => { const i = S.pessoas.findIndex(p => p.id === id); return i % 2 === 0 ? 'p1' : i >= 0 ? 'p2' : ''; };
+const novaPessoaId = () => { let n = 1; while (S.pessoas.some(p => p.id === 'p' + n)) n++; return 'p' + n; };
 const donoNome = id => id === 'casa' ? 'Casa' : (pessoa(id) || {}).nome || '';
-const donoTag = id => `<span class="tag ${id === 'p1' ? 'p1' : id === 'p2' ? 'p2' : ''}">${esc((donoNome(id) || '').split(' ')[0])}</span>`;
+const donoTag = id => `<span class="tag ${corPessoa(id)}">${esc((donoNome(id) || '').split(' ')[0])}</span>`;
 function catInfo(tipo, nome) {
   const list = S.cats[tipo] || [];
   const c = list.find(c => c.nome === nome);
@@ -1079,22 +1086,70 @@ async function syncInit() {
   try { await fbScripts(); } catch (e) { SYNC.estado = 'offline'; if (!S.eu) render(); return; }
   firebase.initializeApp(FB_CFG);
   SYNC.db = firebase.firestore();
+  try { if (localStorage.getItem('gema-emu')) { firebase.auth().useEmulator('http://127.0.0.1:9099', { disableWarnings: true }); SYNC.db.useEmulator('127.0.0.1', 8089); } } catch (e) {} // só para testes locais
   try { await SYNC.db.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
-  firebase.auth().onAuthStateChanged(u => { SYNC.user = u; if (u && u.emailVerified) iniciaSync(); else paraSync(); if (!S.eu) render(); else renderSuave(true); });
+  firebase.auth().onAuthStateChanged(u => { SYNC.user = u; if (u && u.emailVerified) resolveFamilia(); else { paraSync(); SYNC.famOk = false; } render(); });
 }
-const famRef = () => SYNC.db.collection('fam').doc('familia');
+// ===== família: cada família tem o seu espaço na nuvem; só os membros leem e escrevem =====
+const famRef = (id = S.fam) => SYNC.db.collection('fam').doc(id);
+const meuUid = () => SYNC.user && SYNC.user.uid;
+async function resolveFamilia() {
+  SYNC.famOk = false; SYNC.buscandoFam = true; render();
+  try {
+    if (!S.fam) { const u = await SYNC.db.collection('users').doc(meuUid()).get(); if (u.exists && u.data().fam) S.fam = u.data().fam; }
+    if (S.fam) {
+      const f = await famRef().get();
+      const m = f.exists && (f.data().membros || {})[meuUid()];
+      if (!m) { S.fam = null; salvaLocal(); }
+      else { SYNC.fam = f.data(); if (m.pessoa) S.eu = m.pessoa; SYNC.famOk = true; salvaLocal(); iniciaSync(); }
+    }
+  } catch (e) { if (e && e.code === 'permission-denied') { S.fam = null; salvaLocal(); } else if (S.fam) { SYNC.famOk = true; iniciaSync(); } else { SYNC.estado = 'erro'; SYNC.erro = 'Sem internet agora para abrir a família.'; } }
+  SYNC.buscandoFam = false; render();
+}
+const codigoConvite = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let c = ''; for (const n of crypto.getRandomValues(new Uint32Array(6))) c += A[n % A.length]; return c; };
+// criar: o celular vira a família nova (começando do zero ou levando o que já tem aqui)
+async function criarFamilia(nomes, levarDados) {
+  const uid = meuUid(), id = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  if (!levarDados) zeraLocal();
+  const agora = Date.now();
+  S.pessoas = nomes.map((n, i) => Object.assign(S.pessoas[i] || {}, { id: (S.pessoas[i] || {}).id || 'p' + (i + 1), nome: n, aliases: (S.pessoas[i] || {}).aliases && S.pessoas[i].aliases.length ? S.pessoas[i].aliases : [n] }));
+  S.pessoasUpd = agora; S.eu = S.pessoas[0].id;
+  await famRef(id).set({ nome: 'Família de ' + nomes[0].split(' ')[0], admin: uid, criado: agora, membros: { [uid]: { email: emailDe(SYNC.user), pessoa: S.eu, desde: agora } } });
+  await SYNC.db.collection('users').doc(uid).set({ fam: id });
+  S.fam = id; S.sync = { tx: {}, cfg: {} }; save(false);
+  SYNC.fam = (await famRef().get()).data(); SYNC.famOk = true; iniciaSync();
+}
+// entrar com o código do convite: o celular passa a mostrar os dados da família
+async function entrarComCodigo(cod) {
+  cod = String(cod || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^GEMA/, '');
+  if (cod.length !== 6) throw new Error('O código tem 6 letras e números.');
+  const ref = SYNC.db.collection('convites').doc(cod), cv = await ref.get();
+  if (!cv.exists) throw new Error('Código não encontrado. Confira as letras.');
+  const d = cv.data(); if (d.usado) throw new Error('Esse convite já foi usado. Peça um novo.'); if (d.expira < Date.now()) throw new Error('Esse convite venceu. Peça um novo.');
+  const uid = meuUid();
+  await famRef(d.fam).update({ ['membros.' + uid]: { email: emailDe(SYNC.user), pessoa: d.pessoa || null, convite: cod, desde: Date.now() } });
+  await ref.update({ usado: true, usadoPor: uid });
+  await SYNC.db.collection('users').doc(uid).set({ fam: d.fam });
+  paraSync(); zeraLocal(); S.pessoas = []; S.fam = d.fam; S.eu = d.pessoa || null; S.sync = { tx: {}, cfg: {} }; salvaLocal();
+  SYNC.fam = (await famRef().get()).data(); SYNC.famOk = true; iniciaSync();
+  return d;
+}
+// limpa este celular (a nuvem não é tocada)
+function zeraLocal() { const pad = seed(); Object.assign(S, { tx: [], contas: [], contratos: [], fixas: [], metas: [], orc: {}, orcUpd: {}, apagados: {}, mud: 0, sync: { tx: {}, cfg: {} } }); S.regras = S.regras && S.regras.length ? S.regras : pad.regras; }
 function iniciaSync() {
-  if (SYNC.on) return;
+  if (SYNC.on || !S.fam) return;
   SYNC.on = true; SYNC.estado = 'conectando'; SYNC.erro = '';
   S.sync = S.sync && S.sync.tx ? S.sync : { tx: {}, cfg: {} };
   SYNC.unsub.push(famRef().collection('tx').onSnapshot(recebeTx, erroSync));
   SYNC.unsub.push(famRef().collection('cfg').onSnapshot(recebeCfg, erroSync));
+  const fora = () => { paraSync(); S.fam = null; SYNC.famOk = false; salvaLocal(); render(); toast('Você não faz mais parte dessa família'); };
+  SYNC.unsub.push(famRef().onSnapshot(f => { const d = f.data(); if (!d || !(d.membros || {})[meuUid()]) return fora(); const mud = JSON.stringify(Object.keys((SYNC.fam || {}).membros || {})) !== JSON.stringify(Object.keys(d.membros || {})); SYNC.fam = d; if (mud) carregaConvites(); if (V.tab === 'ajustes' && V.maisSec === 'sync') renderSuave(); }, e => { if (e && e.code === 'permission-denied') fora(); }));
   agendaPush(400);
 }
 function paraSync() { SYNC.unsub.forEach(f => f()); SYNC.unsub = []; SYNC.on = false; SYNC.estado = 'off'; }
 function erroSync(e) {
   SYNC.estado = 'erro';
-  SYNC.erro = e && e.code === 'permission-denied' ? 'Este e-mail não tem acesso aos dados da família.' : e && e.code === 'unavailable' ? 'Sem internet agora. Os dados ficam guardados e vão quando a conexão voltar.' : (e && e.message) || String(e);
+  SYNC.erro = e && e.code === 'permission-denied' ? 'Este login não tem acesso aos dados desta família.' : e && e.code === 'unavailable' ? 'Sem internet agora. Os dados ficam guardados e vão quando a conexão voltar.' : (e && e.message) || String(e);
   renderSuave(true);
 }
 let tRender = null;
@@ -1229,10 +1284,11 @@ function ligaCardSync() {
 }
 // ---- apagar: vale para os dois celulares (o que é apagado vai para a nuvem como "apagado", e o outro celular apaga também)
 function apagarDados() {
-  const ops = [['tx', 'Lançamentos', true], ['div', 'Dívidas e contas fixas', true], ['regras', 'Regras automáticas que vocês criaram', false], ['cats', 'Categorias e orçamentos (voltam ao padrão)', false], ['contas', 'Contas e cartões (voltam ao padrão)', false]];
+  const ops = [['tx', 'Lançamentos', true], ['div', 'Dívidas e contas fixas', true], ['regras', 'Regras automáticas que vocês criaram', false], ['cats', 'Categorias e orçamentos (voltam ao padrão)', false], ['contas', 'Contas, cartões e crédito em app', false]];
   const s = sheet(`<div class="row between"><h2 style="margin:0">Apagar dados</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ti('x')}</button></div>
     <p class="small muted" style="margin-top:6px">${SYNC.on ? 'Vai apagar <b>nos dois celulares e na nuvem</b>. ' : ''}Não tem como desfazer. Os nomes de vocês e o login continuam.</p>
-    <button class="btn full" id="ap-bk" style="margin-bottom:10px">${ti('device-floppy', 16)} Salvar um backup antes</button>
+    <button class="btn full" id="ap-bk" style="margin-bottom:8px">${ti('device-floppy', 16)} Salvar um backup antes</button>
+    <button class="btn full" id="ap-zero" style="margin-bottom:10px;color:var(--acc2)">${ti('sparkles', 16)} Começar do zero (mantém regras e categorias)</button>
     ${ops.map(([k, n, on]) => `<label class="row small" style="gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><input type="checkbox" class="chk" data-ap="${k}" ${on ? 'checked' : ''}> ${n}</label>`).join('')}
     <div class="tiny" id="ap-obs" style="margin-top:6px"></div>
     <label class="l">Para confirmar, escreva APAGAR</label><input class="f" id="ap-conf" autocomplete="off" autocapitalize="characters" placeholder="APAGAR">
@@ -1241,6 +1297,7 @@ function apagarDados() {
   const ajusta = () => { if (ck('contas').checked) { ck('tx').checked = true; ck('tx').disabled = true; s.querySelector('#ap-obs').textContent = 'Ao apagar as contas, os lançamentos delas também são apagados.'; } else { ck('tx').disabled = false; s.querySelector('#ap-obs').textContent = ''; } };
   s.querySelectorAll('[data-ap]').forEach(x => x.onchange = ajusta);
   s.querySelector('#ap-bk').onclick = () => salvarBackup();
+  s.querySelector('#ap-zero').onclick = () => { for (const [k] of ops) ck(k).checked = ['tx', 'div', 'contas'].includes(k); ajusta(); s.querySelector('#ap-conf').focus(); toast('Marcado: contas, lançamentos, dívidas, fixas e metas. Escreva APAGAR.'); };
   s.querySelector('#ap-ok').onclick = () => {
     if (P.norm(s.querySelector('#ap-conf').value) !== 'APAGAR') { toast('Escreva APAGAR para confirmar'); return; }
     const q = Object.fromEntries(ops.map(([k]) => [k, ck(k).checked])); if (!Object.values(q).some(Boolean)) { toast('Marque o que quer apagar'); return; }
@@ -1250,9 +1307,8 @@ function apagarDados() {
     if (q.regras) { for (const r of S.regras.filter(r => r.user)) marcaApagado('regras', P.norm(r.k)); S.regras = S.regras.filter(r => !r.user); }
     if (q.cats) { S.cats = pad.cats; S.catsUpd = agora; S.orcUpd = S.orcUpd || {}; for (const k of Object.keys(S.orc || {})) S.orcUpd[k] = agora; S.orc = {}; }
     if (q.contas) {
-      for (const c of S.contas) if (!pad.contas.some(x => x.id === c.id)) marcaApagado('contas', c.id);
-      // as contas padrão voltam limpas (campos apagados vão como vazios para o outro celular)
-      S.contas = pad.contas.map(c => Object.assign({ saldoRef: null, saldoIni: 0, icone: null, daConta: null, chaves: [] }, c, { upd: agora }));
+      for (const c of S.contas) marcaApagado('contas', c.id);
+      S.contas = []; for (const p of S.pessoas) delete p.contaPrincipal; S.pessoasUpd = agora;
     }
     save(); s.remove(); render(); toast(SYNC.on ? 'Apagado nos dois celulares' : 'Dados apagados');
   };
@@ -1416,10 +1472,10 @@ const marcaTopo = () => `<div class="marca"><img src="gema-192.png" alt="">${MAR
 const brlC = v => { if (PRIV && !SEM_MASCARA) return 'R$ •••'; const t = BRL.format(Math.round((v || 0) * 100) / 100); const i = t.lastIndexOf(','); return i < 0 ? esc(t) : esc(t.slice(0, i)) + '<span class="cents">' + esc(t.slice(i)) + '</span>'; };
 const sinalBrl = v => (v < 0 ? '− ' : '') + brl(Math.abs(v));
 // logo e cor do banco
-function bancoDe(c) { const N = P.norm((c && (c.banco || c.nome)) || ''); return BANCOS.find(([re]) => re.test(N)) || null; }
+function bancoDe(c) { if (c && c.logo) { const l = BANCOS.find(x => x[4] === c.logo); if (l) return l; } const N = P.norm((c && (c.banco || c.nome)) || ''); return BANCOS.find(([re]) => re.test(N)) || null; }
 const corBanco = c => (c && c.cor) || ((bancoDe(c) || [])[2]) || '#4A5568';
 function logoMini(c, size = 24) {
-  const b = bancoDe(c), img = c && c.icone ? c.icone : b && b[4] ? 'logo-' + b[4] + '.png' : '';
+  const b = bancoDe(c), img = c && c.icone ? c.icone : c && c.logo ? 'logo-' + c.logo + '.png' : b && b[4] ? 'logo-' + b[4] + '.png' : '';
   if (img) return `<span class="lgc" style="width:${size}px;height:${size}px"><img src="${esc(img)}" alt="" loading="lazy" onerror="this.parentNode.innerHTML='${ti('building-bank', 14).replace(/"/g, '&quot;')}'"></span>`;
   return `<span class="lgc" style="width:${size}px;height:${size}px;color:${corBanco(c)}">${ti(c && c.tipo === 'invest' ? 'pig-money' : 'building-bank', Math.round(size * .6))}</span>`;
 }
@@ -1428,12 +1484,12 @@ function toastDesfazer(msg, desfaz) { document.querySelectorAll('.toast').forEac
   if (desfaz) d.querySelector('button').onclick = () => { d.remove(); desfaz(); }; setTimeout(() => d.remove(), 4200); }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-tab]');
-  if (b) { if (b.closest('.nav') && b.dataset.tab === 'ajustes' || b.hasAttribute('data-irajc')) V.maisSec = b.hasAttribute('data-irajc') ? 'contas' : null; V.tab = b.dataset.tab; render(); window.scrollTo(0, 0); }
+  if (b) { if (b.closest('.nav') && b.dataset.tab === 'ajustes' || b.hasAttribute('data-irajc')) V.maisSec = b.hasAttribute('data-irajc') ? (b.dataset.irajc || 'g-conta') : null; V.tab = b.dataset.tab; render(); window.scrollTo(0, 0); }
 });
 function render() {
   if (PLANO.includes(V.tab)) V.plano = V.tab;
   renderNav();
-  if (!S.eu) return renderEntrada();
+  if (!S.eu || precisaFamilia()) return renderEntrada();
   ({ resumo: rResumo, lanc: rLanc, importar: rImportar, dividas: rDividas, ajustes: rAjustes, fixas: rFixas, ano: rAno, metas: rMetas })[V.tab]();
   if (PLANO.includes(V.tab)) { document.querySelectorAll('#app .voltar').forEach(x => x.remove()); const h1 = $('#app h1'); const r = h1 && h1.closest('.row'); if (r && r.parentNode === $('#app')) r.remove(); else if (h1 && h1.parentNode.parentNode === $('#app')) h1.parentNode.remove();
     if (V.tab === 'fixas') $('#app').insertAdjacentHTML('afterbegin', navMes(true));
@@ -1448,7 +1504,7 @@ function cabecalho(titulo, comMes = true, comQuem = true) {
     <h1 style="${comMes ? '' : 'font-size:28px;margin-top:6px'}">${comMes ? esc(mlabel(V.mes)) : esc(titulo)}</h1></div>
     ${comMes ? `<div class="row" style="gap:6px"><button class="iconbtn" data-mes="-1" aria-label="Mês anterior">${ic('left')}</button><button class="iconbtn" data-mes="1" aria-label="Próximo mês">${ic('right')}</button></div>` : ''}
   </div>
-  ${comQuem ? `<div class="seg" style="margin-bottom:14px">${[['all', 'Família'], ['p1', pnome('p1')], ['p2', pnome('p2')]].map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-quem="${k}">${esc(n)}</button>`).join('')}</div>` : ''}`;
+  ${comQuem ? `<div class="seg" style="margin-bottom:14px">${quemOpts().map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-quem="${k}">${esc(n)}</button>`).join('')}</div>` : ''}`;
 }
 document.addEventListener('click', e => {
   const m = e.target.closest('[data-mes]'); if (m) { V.mes = addMonth(V.mes, +m.dataset.mes); render(); }
@@ -1461,23 +1517,83 @@ document.addEventListener('click', e => { if (e.target.closest('[data-dicaios]')
 // primeira tela: login (traz tudo da nuvem) ou pular e usar só neste celular
 const emailDe = u => String((u && u.email) || '').toLowerCase();
 function pessoaDoEmail(u) { const e = emailDe(u); return e ? S.pessoas.find(p => String(p.email || '').toLowerCase() === e) : null; }
+const logadoOk = () => !!(SYNC.user && SYNC.user.emailVerified);
+const precisaFamilia = () => logadoOk() && !SYNC.famOk;
+// código do convite vindo do link (?convite=ABC123)
+try { const q = new URLSearchParams(location.search).get('convite'); if (q) { sessionStorage.setItem('gema-convite', q); history.replaceState(null, '', location.pathname); } } catch (e) {}
+const conviteDoLink = () => { try { return sessionStorage.getItem('gema-convite') || ''; } catch (e) { return ''; } };
 function renderEntrada() {
   $('#nav').innerHTML = '';
-  const u = SYNC.user, topo = `<div class="entrada-top"><img src="gema-512.png" alt="">${MARCA_SVG}<p>As finanças da família num lugar só.</p></div>`;
-  // conectado: espera os dados da nuvem e reconhece a pessoa pelo e-mail
-  if (u && u.emailVerified && SYNC.on) {
-    const p = pessoaDoEmail(u);
-    if (p) { S.eu = p.id; save(false); return render(); }
-    if (SYNC.estado !== 'ok') { $('#app').innerHTML = topo + `<div class="card empty"><div class="e">${ti('cloud-download', 40)}</div>Trazendo os dados da nuvem…</div>`; return; }
-    // e-mail ainda não conhecido: fica com a pessoa que está sem e-mail (dá para trocar em Ajustes)
-    const livre = S.pessoas.find(p => !p.email) || S.pessoas[0];
-    livre.email = emailDe(u); S.pessoasUpd = Date.now(); S.eu = livre.id; save(false); return render();
+  const topo = `<div class="entrada-top"><img src="gema-512.png" alt="">${MARCA_SVG}<p>As finanças da família num lugar só.</p></div>`;
+  const modo = V.entModo || (conviteDoLink() ? 'entrar' : '');
+  const passos = n => `<div class="passos">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>`;
+  // 1. ainda sem login: criar ou entrar
+  if (!logadoOk()) {
+    if (!modo) {
+      $('#app').innerHTML = topo + `<button class="btn pri full big" id="ent-criar">${ti('home-heart', 18)} Criar minha família</button>
+        <button class="btn full big" id="ent-entrar" style="margin-top:10px">${ti('ticket', 18)} Entrar numa família com código</button>
+        <p class="tiny" style="text-align:center;margin-top:10px">Recebeu um convite? Use o segundo botão.</p>
+        <button class="btn full" id="ent-pular" style="margin-top:14px;background:none">Usar só neste celular, sem login</button>`;
+      $('#ent-criar').onclick = () => { V.entModo = 'criar'; render(); };
+      $('#ent-entrar').onclick = () => { V.entModo = 'entrar'; render(); };
+      $('#ent-pular').onclick = () => { V.entModo = 'local'; render(); };
+      return;
+    }
+    if (modo === 'local') return telaPessoas(topo, null);
+    const carregando = FB_CFG && !window.firebase && SYNC.estado !== 'offline';
+    $('#app').innerHTML = topo + passos(1) + `<p class="small" style="margin:0 2px 10px"><b>${modo === 'criar' ? 'Passo 1: crie o seu login' : 'Passo 1: crie o seu login (ou entre, se já tem)'}</b><br><span class="muted">Cada pessoa da família usa o próprio e-mail e senha.</span></p>`
+      + (carregando ? `<div class="card empty small">${ti('cloud', 18, 'style="vertical-align:-3px"')} Preparando o login…</div>` : FB_CFG && window.firebase ? cardSync() : `<div class="card small">Sem internet agora. Tente de novo quando a conexão voltar.</div>`)
+      + `<button class="btn full" id="ent-voltar" style="margin-top:6px;background:none">${ti('chevron-left', 16)} Voltar</button>`;
+    if (FB_CFG && window.firebase) ligaCardSync();
+    $('#ent-voltar').onclick = () => { V.entModo = ''; try { sessionStorage.removeItem('gema-convite'); } catch (e) {} render(); };
+    return;
   }
-  const carregando = FB_CFG && !window.firebase && SYNC.estado !== 'offline';
-  $('#app').innerHTML = topo + (carregando ? `<div class="card empty small">${ti('cloud', 18, 'style="vertical-align:-3px"')} Preparando o login…</div>` : FB_CFG ? cardSync() : '') + `<button class="btn full" id="ent-pular" style="margin-top:6px;background:none">Pular e entrar depois</button>
-    <p class="tiny" style="text-align:center">Sem entrar, os dados ficam só neste celular. Dá para entrar depois em Ajustes.</p>`;
-  if (FB_CFG && window.firebase) ligaCardSync();
-  $('#ent-pular').onclick = () => { S.eu = S.eu || 'p1'; S.pulouLogin = true; save(false); render(); };
+  if (SYNC.buscandoFam) { $('#app').innerHTML = topo + `<div class="card empty">${ti('cloud-download', 36)}<div style="margin-top:6px">Procurando a sua família…</div></div>`; return; }
+  // 2. com login e sem família: criar (pessoas) ou entrar com código
+  if (modo === 'entrar') {
+    const c0 = conviteDoLink().toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^GEMA/, '');
+    $('#app').innerHTML = topo + passos(2) + `<div class="card"><h2 style="margin-bottom:2px">Digite o código do convite</h2><p class="small muted" style="margin-top:0">Quem convidou mandou um código de 6 letras e números, como GEMA-K7P2QX.</p>
+      <input class="f codigo" id="ent-cod" maxlength="11" autocapitalize="characters" autocomplete="off" placeholder="K7P2QX" value="${esc(c0)}">
+      <div class="tiny" id="ent-err" style="color:var(--red);margin-top:6px"></div>
+      <button class="btn pri full" id="ent-ok" style="margin-top:12px">Entrar na família</button>
+      <p class="tiny" style="margin-bottom:0">Ao entrar, este celular passa a mostrar os dados da família. O que estava só aqui é apagado.</p></div>
+      <button class="btn full" id="ent-outro" style="background:none">Prefiro criar uma família nova</button>
+      <button class="btn full" id="ent-sair" style="background:none">${ti('logout', 16)} Sair do login ${esc(emailDe(SYNC.user))}</button>`;
+    const err = $('#ent-err');
+    $('#ent-ok').onclick = async () => { err.textContent = ''; const b = $('#ent-ok'); b.disabled = true; b.textContent = 'Entrando…';
+      try { const d = await entrarComCodigo($('#ent-cod').value); try { sessionStorage.removeItem('gema-convite'); } catch (e) {} V.entModo = ''; V.tab = 'resumo'; render(); toast('Bem-vindo(a) à ' + (d.nomeFam || 'família')); }
+      catch (e) { err.textContent = e && e.code === 'permission-denied' ? 'Esse convite não vale mais. Peça um novo.' : (e && e.message) || 'Não deu certo'; b.disabled = false; b.textContent = 'Entrar na família'; } };
+    $('#ent-outro').onclick = () => { V.entModo = 'criar'; try { sessionStorage.removeItem('gema-convite'); } catch (e) {} render(); };
+    $('#ent-sair').onclick = async () => { await firebase.auth().signOut(); V.entModo = ''; render(); };
+    return;
+  }
+  telaPessoas(topo + passos(2), true);
+}
+// quem faz parte da família (ao criar a família ou ao usar só neste celular)
+function telaPessoas(topo, comLogin) {
+  const nomes = (V.entNomes = V.entNomes || (S.pessoas.length ? S.pessoas.map(p => p.nome) : ['']));
+  const temDados = S.tx.some(t => !t.del) || S.contas.length;
+  $('#app').innerHTML = topo + `<div class="card"><h2 style="margin-bottom:2px">Quem faz parte da família?</h2><p class="small muted" style="margin-top:0">Comece por você. Dá para adicionar mais pessoas depois.</p>
+    ${nomes.map((n, i) => `<div class="row" style="gap:8px;margin-top:8px"><div class="avatar" style="width:34px;height:34px;flex:none;background:var(--${i % 2 ? 'p2' : 'p1'}bg);color:var(--${i % 2 ? 'p2' : 'p1'})">${esc((n || '?')[0].toUpperCase())}</div><input class="f" data-enome="${i}" value="${esc(n)}" placeholder="${i ? 'Nome de outra pessoa' : 'Seu nome'}" style="flex:1">${i ? `<button class="iconbtn" data-erem="${i}" aria-label="Tirar" style="box-shadow:none">${ti('x', 16)}</button>` : comLogin ? '<span class="tag acc">admin</span>' : ''}</div>`).join('')}
+    <button class="btn sm" id="ent-mais" style="margin-top:10px">${ti('plus', 15)} Adicionar pessoa</button>
+    ${temDados ? `<div class="grupo-t" style="margin-top:16px">Os dados que já estão neste celular</div><div class="seg" id="ent-dados"><button class="on" data-ed="zero">Começar do zero</button><button data-ed="levar">Levar para a família</button></div>
+      <div class="tiny" style="margin-top:6px">Começar do zero apaga contas, lançamentos, dívidas, fixas e metas deste celular. Regras e categorias ficam.</div>` : ''}
+    <button class="btn pri full" id="ent-criarok" style="margin-top:16px">${comLogin ? 'Criar família' : 'Começar'}</button></div>
+    <button class="btn full" id="ent-voltar2" style="background:none">${ti('chevron-left', 16)} ${comLogin ? 'Tenho um código de convite' : 'Voltar'}</button>`;
+  const lerNomes = () => document.querySelectorAll('[data-enome]').forEach(x => nomes[+x.dataset.enome] = x.value.trim());
+  $('#ent-mais').onclick = () => { lerNomes(); nomes.push(''); render(); setTimeout(() => { const l = document.querySelectorAll('[data-enome]'); l[l.length - 1].focus(); }, 30); };
+  document.querySelectorAll('[data-erem]').forEach(x => x.onclick = () => { lerNomes(); nomes.splice(+x.dataset.erem, 1); render(); });
+  let levar = false; document.querySelectorAll('[data-ed]').forEach(x => x.onclick = () => { levar = x.dataset.ed === 'levar'; document.querySelectorAll('[data-ed]').forEach(y => y.classList.toggle('on', y === x)); });
+  $('#ent-voltar2').onclick = () => { V.entModo = comLogin ? 'entrar' : ''; render(); };
+  $('#ent-criarok').onclick = async () => {
+    lerNomes(); const ok = nomes.filter(Boolean); if (!nomes[0]) { toast('Escreva o seu nome'); return; }
+    const b = $('#ent-criarok'); b.disabled = true; b.textContent = 'Criando…';
+    try {
+      if (comLogin) await criarFamilia(ok, levar);
+      else { if (!levar) zeraLocal(); S.pessoas = ok.map((n, i) => Object.assign(S.pessoas[i] || {}, { id: (S.pessoas[i] || {}).id || 'p' + (i + 1), nome: n, aliases: [n] })); S.pessoasUpd = Date.now(); S.eu = S.pessoas[0].id; S.pulouLogin = true; save(false); }
+      V.entModo = ''; V.entNomes = null; V.tab = 'resumo'; render(); toast(comLogin ? 'Família criada. Agora cadastre as contas.' : 'Pronto. Agora cadastre as contas.');
+    } catch (e) { toast((e && e.message) || 'Não deu certo'); b.disabled = false; b.textContent = comLogin ? 'Criar família' : 'Começar'; }
+  };
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-irpessoas]')) { V.tab = 'ajustes'; V.maisSec = 'pessoas'; render(); setTimeout(() => { const x = document.querySelector('#aj-pessoas'); if (x) x.scrollIntoView({ behavior: 'smooth' }); }, 50); } });
 document.addEventListener('click', e => { const b = e.target.closest('[data-eu]'); if (b) { S.eu = b.dataset.eu; save(false); render(); } });
@@ -1607,7 +1723,7 @@ function topoInicio() {
 function navMes(comQuem = true) {
   const hoje = mkey(today());
   return `<div class="mesnav"><button class="arr" data-mes="-1" aria-label="Mês anterior">${ti('chevron-left', 16)}</button><button class="lbl" data-irmes="${hoje}">${esc(mlabel(V.mes))}</button><button class="arr" data-mes="1" aria-label="Próximo mês">${ti('chevron-right', 16)}</button>
-    ${comQuem ? `<select class="mini-sel quem" data-quemsel aria-label="De quem">${[['all', 'Família'], ['p1', pnome('p1')], ['p2', pnome('p2')]].map(([k, n]) => `<option value="${k}" ${V.quem === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>` : ''}</div>`;
+    ${comQuem ? `<select class="mini-sel quem" data-quemsel aria-label="De quem">${quemOpts().map(([k, n]) => `<option value="${k}" ${V.quem === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>` : ''}</div>`;
 }
 document.addEventListener('change', e => { const q = e.target.closest('[data-quemsel]'); if (q) { V.quem = q.value; render(); } const f = e.target.closest('[data-fluxosel]'); if (f) { V.fluxoConta = f.value; const y = window.scrollY; render(); window.scrollTo(0, y); } });
 const ehCofre = c => c.tipo === 'invest';
@@ -1703,9 +1819,9 @@ function marcaPago(k) {
 function cardFaturas(mk) {
   const F = faturasDoMes(mk); if (!F.length) return '';
   const hoje = today();
-  return `<div class="card"><div class="row between" style="margin-bottom:4px"><h2 style="margin:0">Faturas do mês</h2><b class="small">${esc(brl(soma(F, 'total')))}</b></div>
-    ${F.map(f => `<div class="linha" data-cartaod="${f.c.id}" style="cursor:pointer"><span class="icl">${logoMini(f.c, 34)}</span><div class="mid"><div class="t">${esc(f.c.nome)} <span class="tiny">${esc(pnome(f.c.dono))}</span></div><div class="s">${cobraDe(f.c) === 'prazo' ? 'Cada compra vence em ' + f.c.prazo + ' dias' : cobraDe(f.c) === 'parcelas' ? 'Parcelas · vence ' + dshort(f.venc) : 'Vence ' + dshort(f.venc)}</div></div><div class="v">${esc(brl(f.total))}</div>
-      <span class="selo ${f.aberto > 0.004 ? (f.venc < hoje ? 'up' : 'ab') : 'pg'}">${f.aberto > 0.004 ? (f.venc < hoje ? 'Atrasada' : 'Aberta') : 'Paga'}</span></div>`).join('')}</div>`;
+  return `<div class="card"><div class="row between" style="margin-bottom:4px"><h2 style="margin:0">Cartões e crédito</h2><span class="row" style="gap:10px"><b class="small">${esc(brl(soma(F, 'total')))}</b><button class="linkbtn" data-tab="ajustes" data-irajc="g-cartao">Ver todos</button></span></div>
+    ${F.map(f => { const lim = f.c.limite ? Math.min(100, abertoCartao(f.c).total / f.c.limite * 100) : null; return `<div class="linha" data-cartaod="${f.c.id}" style="cursor:pointer"><span class="icl">${logoMini(f.c, 34)}</span><div class="mid"><div class="t">${esc(f.c.nome)} <span class="tiny">${esc(pnome(f.c.dono))}</span></div><div class="s">${cobraDe(f.c) === 'prazo' ? 'Cada compra vence em ' + f.c.prazo + ' dias' : cobraDe(f.c) === 'parcelas' ? 'Parcelas · vence ' + dshort(f.venc) : 'Fatura de ' + MESC[+f.venc.slice(5, 7) - 1] + ' · vence ' + dshort(f.venc)}</div>${lim != null ? `<div class="limbar" style="margin:6px 0 0;height:5px"><i style="width:${lim.toFixed(1)}%"></i></div>` : ''}</div><div class="v">${esc(brl(f.total))}</div>
+      <span class="selo ${f.aberto > 0.004 ? (f.venc < hoje ? 'up' : 'ab') : 'pg'}">${f.aberto > 0.004 ? (f.venc < hoje ? 'Atrasada' : 'Aberta') : 'Paga'}</span></div>`; }).join('')}</div>`;
 }
 // comparação com o mês passado: só quando o mês passado tem extrato
 const temDadosMes = mk => live().some(t => mesDe(t) === mk && filtraQuem(t));
@@ -1753,10 +1869,19 @@ function cardFluxoConta(L, mk) {
     ${!sel && Math.abs(tc - td) > 0.05 ? `<div class="tiny" style="margin-top:6px">As transferências não zeram (${esc(brl(Math.abs(tc - td)))}): ${saiuFora || entrouFora ? `${saiuFora ? esc(brl(saiuFora)) + ' foram para contas sem extrato no app' : ''}${saiuFora && entrouFora ? ' e ' : ''}${entrouFora ? esc(brl(entrouFora)) + ' vieram de contas sem extrato' : ''}.` : 'dinheiro que foi para cofrinho ou investimento.'}</div>` : ''}
     ${bate}</div>`;
 }
+// começo do zero: convite para cadastrar contas, cartões e crédito em app
+function primeirosPassos() {
+  const tem = g => ativas().some(c => grupoDe(c) === g);
+  if (tem('conta') && (tem('cartao') || tem('credito')) || S.passosOk) return '';
+  const p = (g, t, sub) => `<div class="linha" data-passo="${g}" style="cursor:pointer">${icBox(tem(g) ? 'check' : GRUPOS[g].ic, tem(g) ? '#3F8A14' : GRUPOS[g].cor, 34)}<div class="mid"><div class="t" style="font-weight:600${tem(g) ? ';text-decoration:line-through;color:var(--tx3)' : ''}">${t}</div><div class="s">${sub}</div></div>${ti('chevron-right', 16, 'style="color:var(--tx3)"')}</div>`;
+  return `<div class="card"><div class="row between"><h2 style="margin:0">Primeiros passos</h2>${tem('conta') ? '<button class="linkbtn" id="passos-ok">Pronto</button>' : ''}</div><p class="tiny" style="margin:2px 0 6px">Cadastre o que a família usa. Depois é só importar os extratos.</p><div class="menu" style="margin:0">
+    ${p('conta', 'Cadastrar contas', 'Bancos, benefícios (VR, VA) e cofrinhos')}${p('cartao', 'Cadastrar cartões de crédito', 'Limite, fechamento e vencimento')}${p('credito', 'Cadastrar crédito em app e loja', 'Shopee, Mercado Crédito, BônusCred, crediário')}</div></div>`;
+}
+document.addEventListener('click', e => { const x = e.target.closest('[data-passo]'); if (x) editarConta(null, x.dataset.passo); if (e.target.closest('#passos-ok')) { S.passosOk = true; save(false); render(); } });
 function rResumo() {
   const mk = V.mes, T = totaisMes(mk), Ta = totaisMes(addMonth(mk, -1)), okAnt = temDadosMes(addMonth(mk, -1));
   const L = contasDoMes(mk);
-  const totCx = L.some(x => x.s != null) ? L.reduce((a, x) => a + (x.s || 0), 0) : null;
+  const totCx = L.some(x => x.s != null && !x.c.foraTotal) ? L.filter(x => !x.c.foraTotal).reduce((a, x) => a + (x.s || 0), 0) : null;
   const pv = previsao(mk), passado = mk < mkey(today());
   const recs = Object.entries(T.porRec).filter(([, v]) => v > 0.004).sort((a, b) => b[1] - a[1]);
   const rec = recorrentes().slice(0, 4), mxR = Math.max(T.ent, T.desp, 1);
@@ -1765,6 +1890,7 @@ function rResumo() {
     <div class="big">${totCx == null ? '—' : (totCx < 0 ? '− ' : '') + brlC(Math.abs(totCx))}</div>
     ${pv && pv.contas != null ? `<div class="sep"><span>Previsto para o fim do mês</span><b>${pv.contas < 0 ? '− ' : ''}${esc(brl(Math.abs(pv.contas)))}</b></div>` : ''}</div>
   ${cardsContas(L)}
+  ${primeirosPassos()}
   ${avisosInicio(mk, T)}
   <div class="card res"><h2 style="margin-bottom:2px">Resultado do mês</h2>
     <div class="r" data-ir="de-onde"><span class="muted">${ti('arrow-down-left', 15, 'style="vertical-align:-3px;color:var(--grn)"')} Receitas</span><b style="color:var(--grn)">${esc(brl(T.ent))}</b></div>
@@ -1800,7 +1926,7 @@ function cardSaldos(L) {
     return `<div class="row between" style="margin:12px 0 2px"><span class="tiny" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em">${titulo}</span>${conhecidos.length ? `<b class="small">${esc(brl(tot))}</b>` : ''}</div>
     <div class="list">${G.map(x => linha(x) + L.filter(y => y.c.tipo === 'invest' && y.c.daConta === x.c.id).map(y => linha(y, true)).join('')).join('')}</div>`;
   };
-  const cards = S.contas.filter(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem)).map(c => {
+  const cards = S.contas.filter(c => !c.arquivada && (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem)).map(c => {
     const a = live().filter(t => t.conta === c.id && naFatura(t) && t.venc && !t.pagoEm && (t.aberto || t.venc >= today())).reduce((s, t) => s - t.valor, 0);
     return { c, a };
   }).filter(x => x.a > 0.004);
@@ -2078,7 +2204,7 @@ function rAno() {
   const cats = Object.entries(D.cats).map(([k, v]) => [k, v.reduce((a, b) => a + b, 0), v]).filter(x => x[1] > 0.004).sort((a, b) => b[1] - a[1]);
   const maiores = D.L.filter(t => t.tipo === 'despesa' && t.valor < 0).sort((a, b) => a.valor - b.valor).slice(0, 8);
   $('#app').innerHTML = `<div class="row" style="gap:10px;margin-bottom:12px"><button class="voltar" data-tab="resumo" aria-label="Voltar">${ti('chevron-left')}</button><div style="flex:1"><div class="tiny" style="font-weight:600">RESUMO DO ANO</div><h1>${ano}</h1></div><div class="row" style="gap:6px"><button class="iconbtn" data-ano="-1" aria-label="Ano anterior">${ti('chevron-left')}</button><button class="iconbtn" data-ano="1" aria-label="Próximo ano">${ti('chevron-right')}</button></div></div>
-  <div class="seg" style="margin-bottom:14px">${[['all', 'Família'], ['p1', pnome('p1')], ['p2', pnome('p2')]].map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-quem="${k}">${esc(n)}</button>`).join('')}</div>
+  <div class="seg" style="margin-bottom:14px">${quemOpts().map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-quem="${k}">${esc(n)}</button>`).join('')}</div>
   <div class="hero"><div class="lbl">Saldo do ano</div><div class="big">${esc(brl(ent - desp))}</div><div class="two"><div>Entradas<b>${esc(brl(ent))}</b></div><div style="text-align:right">Despesas<b>${esc(brl(desp))}</b></div></div>
   <div class="sep"><span>Média de despesas por mês</span><b style="font-size:15px">${esc(brl(desp / comDados))}</b></div></div>
   ${(() => { const rend = D.L.filter(t => t.tipo === 'receita' && t.cat === 'Rendimentos'); const rc = rend.filter(t => (conta(t.conta) || {}).tipo === 'invest').reduce((a, t) => a + t.valor, 0), rcc = rend.reduce((a, t) => a + t.valor, 0) - rc;
@@ -2118,7 +2244,7 @@ async function exportarAno(ano) {
 function rLanc() {
   const contas = S.contas.filter(c => V.quem === 'all' || c.dono === V.quem);
   const rv = itensRevisar(V.mes);
-  const filtros = [V.fConta && conta(V.fConta) ? ['conta', conta(V.fConta).nome + ' ' + pnome(conta(V.fConta).dono)] : null, V.fCat ? ['cat', (V.fCat === '(sem)' ? 'Sem categoria' : V.fCat) + (V.fSub ? ' › ' + (V.fSub === '(sem)' ? 'sem subcategoria' : V.fSub) : '')] : null, V.fRec ? ['rec', V.fRec === '(sem)' ? 'Receita sem categoria' : V.fRec] : null].filter(Boolean);
+  const filtros = [/^g:/.test(V.fConta) ? ['conta', GRUPOS[V.fConta.slice(2)].nome] : V.fConta && conta(V.fConta) ? ['conta', conta(V.fConta).nome + ' ' + pnome(conta(V.fConta).dono)] : null, V.fCat ? ['cat', (V.fCat === '(sem)' ? 'Sem categoria' : V.fCat) + (V.fSub ? ' › ' + (V.fSub === '(sem)' ? 'sem subcategoria' : V.fSub) : '')] : null, V.fRec ? ['rec', V.fRec === '(sem)' ? 'Receita sem categoria' : V.fRec] : null].filter(Boolean);
   $('#app').innerHTML = marcaTopo() + `<div class="topo"><div class="ola">Lançamentos</div><div class="row" style="gap:6px"><button class="iconbtn" data-buscaab aria-label="Buscar" style="box-shadow:none;background:${V.buscaAb || V.busca ? 'var(--soft)' : 'none'}">${ti('search', 20)}</button><button class="iconbtn" data-filtros aria-label="Filtros" style="box-shadow:none;background:${V.fConta ? 'var(--soft)' : 'none'}">${ti('adjustments-horizontal', 20)}</button></div></div>
   ${V.buscaAb || V.busca ? `<div style="position:relative;margin-bottom:10px"><input class="f" id="busca" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar em todos os meses" value="${esc(V.busca)}" style="padding-left:36px;border-radius:99px"><span style="position:absolute;left:12px;top:11px;color:var(--tx3)">${ti('search', 17)}</span></div>` : ''}
   ${navMes()}
@@ -2131,10 +2257,11 @@ function rLanc() {
   const b = $('#busca'); if (b) { if (V.buscaAb && !V.busca) b.focus(); b.oninput = () => { clearTimeout(tmr); tmr = setTimeout(() => { V.busca = b.value; pintaLista(); }, 180); }; }
 }
 function filtrosSheet() {
-  const contas = S.contas.filter(c => V.quem === 'all' || c.dono === V.quem);
+  const contas = S.contas.filter(c => (V.quem === 'all' || c.dono === V.quem) && (!c.arquivada || c.id === V.fConta));
   const s = sheet(`<div class="row between"><h2 style="margin:0">Filtros</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ti('x', 18)}</button></div>
-    <label class="l">De quem</label><div class="seg">${[['all', 'Família'], ['p1', pnome('p1')], ['p2', pnome('p2')]].map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-fq="${k}">${esc(n)}</button>`).join('')}</div>
-    <label class="l">Conta</label><div class="menu">${[{ id: '', nome: 'Todas as contas' }].concat(contas).map(c => `<div class="linha" data-fcon="${c.id}" style="cursor:pointer">${c.id ? `<span class="icl">${logoMini(c, 28)}</span>` : icBox('building-bank', '#5E6656', 28)}<span class="mid small" style="font-weight:500">${esc(c.nome)}${c.id ? ' · ' + esc(pnome(c.dono)) : ''}</span>${(V.fConta || '') === c.id ? ti('check', 18, 'style="color:var(--acc2)"') : ''}</div>`).join('')}</div>
+    <label class="l">De quem</label><div class="seg">${quemOpts().map(([k, n]) => `<button class="${V.quem === k ? 'on' : ''}" data-fq="${k}">${esc(n)}</button>`).join('')}</div>
+    <label class="l">Conta</label><div class="seg st" style="margin-bottom:8px">${[['', 'Todas'], ['g:conta', 'Contas'], ['g:cartao', 'Cartões'], ['g:credito', 'Crédito em app']].map(([k, n]) => `<button class="${(V.fConta || '') === k ? 'on' : ''}" data-fcon="${k}">${n}</button>`).join('')}</div>
+    ${['conta', 'cartao', 'credito'].map(g => { const X = ordemContas(contas.filter(c => grupoDe(c) === g)); return X.length ? `<div class="tiny" style="font-weight:600;margin:8px 2px 4px">${GRUPOS[g].nome}</div><div class="menu">${X.map(c => `<div class="linha" data-fcon="${c.id}" style="cursor:pointer"><span class="icl">${logoMini(c, 28)}</span><span class="mid small" style="font-weight:500">${esc(c.nome)} · ${esc(pnome(c.dono))}</span>${(V.fConta || '') === c.id ? ti('check', 18, 'style="color:var(--acc2)"') : ''}</div>`).join('')}</div>` : ''; }).join('')}
     <label class="l">Categoria</label><select class="f" id="fl-cat"><option value="">Todas</option><option value="(sem)" ${V.fCat === '(sem)' ? 'selected' : ''}>Sem categoria</option>${S.cats.despesa.map(c => c.nome).concat(Object.keys(CAT_CALC)).map(n => `<option ${V.fCat === n ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`);
   s.querySelectorAll('[data-fq]').forEach(x => x.onclick = () => { V.quem = x.dataset.fq; s.remove(); render(); filtrosSheet(); });
   s.querySelectorAll('[data-fcon]').forEach(x => x.onclick = () => { V.fConta = x.dataset.fcon; s.remove(); render(); });
@@ -2164,7 +2291,7 @@ function pintaLista() {
   const todosMeses = !!q; // com busca, procura em todos os meses
   const comp = V.fCat || V.fRec || V.fSt; // filtros do Resumo: o mês é o da fatura, como nos totais
   let L = live().filter(t => (todosMeses || (comp ? mesDe(t) : mkey(t.data)) === V.mes) && filtraQuem(t));
-  if (V.fConta) L = L.filter(t => t.conta === V.fConta);
+  if (V.fConta) L = /^g:/.test(V.fConta) ? L.filter(t => grupoDe(conta(t.conta)) === V.fConta.slice(2)) : L.filter(t => t.conta === V.fConta);
   if (V.fCat) L = L.filter(t => { const g = gasto(t); return g && (V.fCat === '(sem)' ? !g.cat : g.cat === V.fCat) && (!V.fSub || (V.fSub === '(sem)' ? !g.sub : g.sub === V.fSub)); });
   if (V.fRec) L = L.filter(t => ehReceita(t) && (t.cat || '') === (V.fRec === '(sem)' ? '' : V.fRec));
   const abertoCart = t => ehCart(conta(t.conta)) && !t.pagoEm && (t.aberto || (t.venc && t.venc >= today()));
@@ -2254,12 +2381,14 @@ function opcoesClass(sel) {
   for (const c of S.cats.receita) h += o(`receita|${c.nome}|`, c.nome);
   h += '</optgroup><optgroup label="Entrada que é dívida">';
   for (const c of S.cats.entdivida) h += o(`entdivida|${c.nome}|`, c.nome);
+  const CT = ordemContas(ativas().filter(ehCart)).concat(sel && sel.startsWith('pagdivida|@') ? S.contas.filter(c => ehCart(c) && c.arquivada && sel === 'pagdivida|@' + c.id + '|') : []);
+  if (CT.length) { h += '</optgroup><optgroup label="Pagamento de cartão ou crédito">'; for (const c of CT) h += o(`pagdivida|@${c.id}|`, 'Pagamento de ' + c.nome + (S.pessoas.length > 1 ? ' · ' + pnome(c.dono) : '')); }
   h += '</optgroup><optgroup label="Não conta no resumo">' + o('transf||', 'Transferência entre contas') + o('pagdivida||', 'Pagamento de fatura/dívida') + o('neutro||', 'Ignorar (Pix devolvido, estorno…)');
   if (sel && !h.includes(`value="${esc(sel)}"`)) h += o(sel, sel.split('|').filter(Boolean).join(' › '));
   return h + '</optgroup>';
 }
-const classVal = t => `${t.tipo}|${t.tipo === 'despesa' || t.tipo === 'receita' || t.tipo === 'entdivida' ? (t.cat || '') : ''}|${t.tipo === 'despesa' ? (t.sub || '') : ''}`;
-function aplicaClass(t, v) { const [tipo, cat, sub] = v.split('|'); t.tipo = tipo; t.cat = cat || (tipo === 'pagdivida' || tipo === 'transf' ? t.cat || '' : ''); t.sub = sub || ''; if (tipo === 'pagdivida' || tipo === 'transf' || tipo === 'neutro') { t.cat = ''; t.sub = ''; } }
+const classVal = t => t.tipo === 'pagdivida' && (t.cartaoFixo || t.cartao) && conta(t.cartaoFixo || t.cartao) ? `pagdivida|@${t.cartaoFixo || t.cartao}|` : `${t.tipo}|${t.tipo === 'despesa' || t.tipo === 'receita' || t.tipo === 'entdivida' ? (t.cat || '') : ''}|${t.tipo === 'despesa' ? (t.sub || '') : ''}`;
+function aplicaClass(t, v) { if (/^pagdivida\|@/.test(v)) { t.cartaoFixo = v.split('|')[1].slice(1); t.tipo = 'pagdivida'; t.cat = ''; t.sub = ''; return; } delete t.cartaoFixo; const [tipo, cat, sub] = v.split('|'); t.tipo = tipo; t.cat = cat || (tipo === 'pagdivida' || tipo === 'transf' ? t.cat || '' : ''); t.sub = sub || ''; if (tipo === 'pagdivida' || tipo === 'transf' || tipo === 'neutro') { t.cat = ''; t.sub = ''; } }
 // exclusão feita por vocês: marca para o app não recriar e desfaz as ligações automáticas
 function excluirTx(x) {
   const agora = Date.now(), acha = id => S.tx.find(y => y.id === id && !y.del), apaga = y => { y.del = true; y.apagadoMao = true; y.upd = agora; };
@@ -2288,6 +2417,8 @@ function classificarPorNome() {
 }
 function aprendeRegra(nome, v) {
   const k = P.norm(nome); if (!k || k.length < 3) return;
+  // pagamento de um cartão/crédito: o app passa a reconhecer esse nome no extrato como pagamento dele
+  if (/^pagdivida\|@/.test(v)) { const c = conta(v.split('|')[1].slice(1)); if (c) { c.pagChaves = [...new Set([...(c.pagChaves || []), k])]; c.upd = Date.now(); } v = 'pagdivida||'; }
   const [tipo, cat, sub] = v.split('|');
   S.regras = S.regras.filter(r => !(r.user && P.norm(r.k) === k));
   S.regras.push({ k, cat, sub, tipo, user: true, exato: false, upd: Date.now() });
@@ -2304,17 +2435,23 @@ function confirma(msg, ok, txtOk = 'Confirmar', perigo = true) {
   const s = sheet(`<h2>${esc(msg)}</h2><div class="grid2" style="margin-top:14px"><button class="btn" data-fechar>Cancelar</button><button class="btn ${perigo ? 'danger' : 'pri'}" id="cfok">${esc(txtOk)}</button></div>`);
   s.querySelector('#cfok').onclick = () => { s.remove(); ok(); };
 }
+// lista de contas para escolher, separada nos três grupos (arquivadas só se já for a escolhida)
+function opcoesContas(sel) {
+  return ['conta', 'cartao', 'credito'].map(g => { const X = ordemContas(S.contas.filter(c => grupoDe(c) === g && (!c.arquivada || c.id === sel))); return X.length ? `<optgroup label="${GRUPOS[g].nome}">${X.map(c => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(c.nome)}${S.pessoas.length > 1 || c.dono === 'casa' ? ' · ' + esc(pnome(c.dono)) : ''}</option>`).join('')}</optgroup>` : ''; }).join('');
+}
+const contaPadrao = () => { const p = pessoa(S.eu), pr = p && p.contaPrincipal && conta(p.contaPrincipal); if (ativa(pr)) return pr.id; const L = ordemContas(ativas()); return (L.find(c => c.dono === S.eu && c.tipo === 'conta') || L.find(c => c.tipo === 'conta') || L[0] || {}).id; };
 function editarTx(t, modo) {
+  if (!t && !ativas().length) { toast('Cadastre uma conta primeiro'); V.tab = 'ajustes'; V.maisSec = 'g-conta'; render(); return; }
   const novo = !t;
-  const base = t || { id: 'm:' + uid(), conta: S.contas.find(c => c.dono === S.eu && c.tipo === 'conta')?.id || S.contas[0].id, data: V.mes === mkey(today()) ? today() : V.mes + '-01', valor: 0, desc: '', nome: '', tipo: 'despesa', cat: '', sub: '' };
+  const base = t || { id: 'm:' + uid(), conta: contaPadrao(), data: V.mes === mkey(today()) ? today() : V.mes + '-01', valor: 0, desc: '', nome: '', tipo: 'despesa', cat: '', sub: '' };
   const c0 = conta(base.conta) || {};
-  const opContas = S.contas.map(c => `<option value="${c.id}" ${c.id === base.conta ? 'selected' : ''}>${esc(c.nome)} · ${esc(donoNome(c.dono).split(' ')[0])}</option>`).join('');
+  const opContas = opcoesContas(base.conta);
   const valAbs = Math.abs(base.valor || 0);
   const ehCt = c0.tipo === 'cartao' || c0.tipo === 'loja';
   const parcInfo = (() => { if (novo) return ''; if (base.contrato) { const k = (S.contratos || []).find(x => x.id === base.contrato); return k ? `<div class="campo" data-fechar data-tab="dividas"><span class="k">${ti('file-invoice', 18)}</span><div class="v"><div class="l">Dívida</div><div>${esc(k.nome)}${base.parc ? ' · parcela ' + esc(base.parc) : ''}</div></div>${ti('chevron-right', 16)}</div>` : ''; }
     return base.parc ? `<div class="campo"><span class="k">${ti('calendar-stats', 18)}</span><div class="v"><div class="l">Parcela</div><div>${esc(base.parc)}</div></div></div>` : ''; })();
   const usadas = (() => { const n = {}; for (const x of live().slice(-400)) if (x.tipo === 'despesa' && x.cat) { const k = 'despesa|' + x.cat + '|' + (x.sub || ''); n[k] = (n[k] || 0) + 1; } return Object.entries(n).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k); })();
-  const contasRap = S.contas.filter(c => ['conta', 'beneficio', 'cartao', 'loja'].includes(c.tipo) && !c.oculta).sort((a, b) => (a.dono === S.eu ? 0 : 1) - (b.dono === S.eu ? 0 : 1)).slice(0, 8);
+  const contasRap = ordemContas(ativas().filter(c => ['conta', 'beneficio', 'cartao', 'loja'].includes(c.tipo) && !c.oculta)).sort((a, b) => (a.id === base.conta ? 0 : 1) - (b.id === base.conta ? 0 : 1) || (a.dono === S.eu ? 0 : 1) - (b.dono === S.eu ? 0 : 1)).slice(0, 8);
   const sel0 = modo && modo.sinal != null ? modo.sinal : base.valor > 0 ? 1 : -1;
   const s = sheet(`<div class="row between" style="margin-bottom:6px"><button class="iconbtn" data-fechar aria-label="Fechar" style="box-shadow:none;background:var(--soft)">${ti('x', 18)}</button><b>${novo ? (sel0 === 0 ? 'Transferência' : sel0 > 0 ? 'Nova receita' : 'Novo gasto') : 'Editar lançamento'}</b>${novo ? '<span style="width:38px"></span>' : `<button class="iconbtn" id="ed-del" aria-label="Excluir" style="box-shadow:none;background:var(--redbg);color:var(--red)">${ti('trash', 18)}</button>`}</div>
     <div class="seg" id="ed-sinal" style="margin:6px 0 10px"><button class="${sel0 < 0 ? 'on' : ''}" data-s="-1">Saiu dinheiro</button><button class="${sel0 > 0 ? 'on' : ''}" data-s="1">Entrou dinheiro</button>${novo ? `<button class="${sel0 === 0 ? 'on' : ''}" data-s="0">Entre contas</button>` : ''}</div>
@@ -2604,9 +2741,10 @@ function rImportar() {
   }
   const L = I.linhas, c = conta(I.contaId);
   const novos = L.filter(l => !l.dup && !l.excluido), sel = L.filter(l => l.sel), rev = novos.filter(l => l.tipo === 'despesa' && !l.cat), exL = L.filter(l => l.excluido);
-  const opContas = S.contas.map(x => `<option value="${x.id}" ${x.id === I.contaId ? 'selected' : ''}>${esc(x.nome)} · ${esc(donoNome(x.dono).split(' ')[0])}</option>`).join('');
+  const opContas = opcoesContas(I.contaId);
   h += `<div class="card"><div class="row" style="gap:12px"><div class="ic" style="background:var(--accbg);color:var(--acc)">${ic('file', 'width="20" height="20"')}</div><div class="mid" style="flex:1;min-width:0"><div class="t" style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(I.nomeArq)}</div><div class="s small muted">${esc(I.res.formato)}${I.res.banco ? ' · ' + esc(I.res.banco) : ' · formato genérico'} · ${L.length} lançamento(s)</div></div></div>
     <label class="l">Importar na conta</label><select class="f" id="imp-conta"><option value="">Escolha a conta…</option>${opContas}</select>
+    ${!I.contaId ? (() => { const g = I.res.tipo === 'cartao' ? 'cartao' : I.res.tipo === 'loja' ? 'credito' : 'conta', bk = I.res.banco && BANCOS.find(([re]) => re.test(P.norm(I.res.banco))); return `<button class="btn full" id="imp-novaconta" style="margin-top:8px;color:var(--acc2)">${ti('plus', 16)} ${bk && bk[4] ? 'Cadastrar ' + esc(GRUPOS[g].um === 'conta' ? LOGO_NOME[bk[4]] || I.res.banco : GRUPOS[g].um + ' ' + (LOGO_NOME[bk[4]] || I.res.banco)) + ' agora' : 'Cadastrar uma ' + (g === 'conta' ? 'conta' : 'conta nova') + ' agora'}</button>`; })() : ''}
     ${I.res.generico ? `<div class="banner amb" style="margin:10px 0 0">Formato que eu ainda não conheço: confira os valores e as datas antes de importar.<button class="btn sm" id="imp-inv" style="margin-left:auto">Inverter sinais</button></div>` : ''}
     ${I.res.prazo ? `<div class="banner acc" style="margin:10px 0 0">Data da compra = vencimento − ${I.res.prazo} dias.</div>` : ''}
     ${I.res.aviso ? `<div class="banner ${I.res.confira ? 'amb' : 'acc'}" style="margin:10px 0 0">${esc(I.res.aviso)}</div>` : ''}
@@ -2624,6 +2762,10 @@ function rImportar() {
     <button class="btn" id="imp-cancel" style="background:var(--card);box-shadow:var(--sh)">Cancelar</button><button class="btn pri" id="imp-ok">Importar ${sel.length}</button></div>`;
   $('#app').innerHTML = h;
   $('#imp-conta').onchange = e => { V.imp = montaPrevia(I.res, e.target.value, I.nomeArq); rImportar(); };
+  if ($('#imp-novaconta')) $('#imp-novaconta').onclick = () => {
+    const g = I.res.tipo === 'cartao' ? 'cartao' : I.res.tipo === 'loja' ? 'credito' : 'conta', bk = I.res.banco && BANCOS.find(([re]) => re.test(P.norm(I.res.banco)));
+    editarConta(null, g, { logo: bk && bk[4], dono: donoDoArquivo(I.res, I.nomeArq), tipo: I.res.tipo === 'beneficio' ? 'beneficio' : null, aoSalvar: id => { V.imp = montaPrevia(I.res, id, I.nomeArq); rImportar(); } });
+  };
   if ($('#imp-inv')) $('#imp-inv').onclick = () => { I.res.rows.forEach(r => r.valor = -r.valor); V.imp = montaPrevia(I.res, I.contaId, I.nomeArq); rImportar(); };
   $('#imp-cancel').onclick = () => { V.imp = null; V.fila = []; rImportar(); };
   $('#imp-ok').onclick = confirmaImport;
@@ -2670,7 +2812,6 @@ function confirmaImport() {
       if (b && !S.tx.some(x => x.id === 'esp|' + t.id)) S.tx.push({ id: 'esp|' + t.id, conta: b.id, data: t.data, desc: 'Passado na maquininha → ' + c.nome, nome: 'Passado na maquininha → ' + c.nome, valor: -Math.abs(t.valor), tipo: 'transf', cat: '', sub: '', criado: agora, upd: agora });
     }
   }
-  if (regrasPrivadas()) reaplicaRegras();
   conciliaFaturas(); pareiaTransf();
   if (I.res.inicio && ['conta', 'beneficio', 'invest'].includes(c.tipo) && (!c.desde || I.res.inicio < c.desde)) { c.desde = I.res.inicio; c.upd = agora; }
   if (I.res.ag && I.res.cc && c.tipo === 'conta' && !c.agencia && !c.numero) { c.agencia = String(I.res.ag).replace(/\D/g, ''); c.numero = String(I.res.cc); c.dadosAuto = true; c.upd = agora; }
@@ -2819,6 +2960,7 @@ function resolverTransf(lista) {
 const fimMes = d => { const [y, m] = d.split('-').map(Number); return P.iso(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1) > d ? P.addDays(P.iso(m === 12 ? y + 1 : y, m === 12 ? 1 : m + 1, 1), -1) : d; };
 function cartaoDoPagamento(t) {
   const c0 = conta(t.conta); if (!c0 || c0.tipo !== 'conta') return null;
+  if (t.cartaoFixo && ehCart(conta(t.cartaoFixo))) return conta(t.cartaoFixo);
   const N = P.norm((t.desc || '') + ' ' + (t.nome || ''));
   const porNome = S.contas.find(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (c.pagChaves || []).some(k => k && N.includes(P.norm(k))));
   if (porNome) return porNome;
@@ -3212,7 +3354,7 @@ function proximasFaturas(nMeses = 6) {
 }
 function rDividas() {
   const hoje = today();
-  const contas = S.contas.filter(c => (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem));
+  const contas = ordemContas(S.contas.filter(c => !c.arquivada && (c.tipo === 'cartao' || c.tipo === 'loja') && (V.quem === 'all' || c.dono === V.quem)));
   let totalAberto = 0;
   const blocos = contas.map(c => {
     const itens = live().filter(t => t.conta === c.id && naFatura(t));
@@ -3363,7 +3505,7 @@ function rAjustes() {
     <p class="small muted" style="margin-top:-4px">Último backup: <b>${esc(lastB)}</b>${S.mud ? ` · ${S.mud} alteração(ões) depois dele` : ''}. Ao salvar, toque em “Salvar em Arquivos” → Drive → “Controle Financeiro”.</p>
     <button class="btn pri full" id="bk-salvar">Salvar backup</button>
     <div class="grid2" style="margin-top:8px"><button class="btn" id="bk-juntar">Juntar backup</button><button class="btn" id="bk-abrir">Abrir backup</button></div>
-    <p class="tiny" style="margin-bottom:0"><b>Juntar</b> traz os lançamentos do backup de ${esc(pnome(S.pessoas.find(p => p.id !== S.eu).id))} sem apagar os seus. <b>Abrir</b> substitui tudo deste celular pelo backup.</p>
+    <p class="tiny" style="margin-bottom:0"><b>Juntar</b> traz os lançamentos do backup de ${esc(pnome((S.pessoas.find(p => p.id !== S.eu) || {}).id))} sem apagar os seus. <b>Abrir</b> substitui tudo deste celular pelo backup.</p>
   </div>
 `,
     sou: `  <div class="card"><h2>Este celular é de</h2><div class="seg">${S.pessoas.map(p => `<button class="${p.id === S.eu ? 'on' : ''}" data-souu="${p.id}">${esc(p.nome)}</button>`).join('')}</div></div>
@@ -3381,7 +3523,8 @@ function rAjustes() {
 `,
     pessoas: `  <div class="card" id="aj-pessoas"><h2>Pessoas</h2><p class="small muted" style="margin-top:-4px">O nome completo como aparece no Pix serve para o app saber que um Pix entre vocês é transferência, e não entrada ou despesa. O e-mail é o do login: com ele, o app reconhece quem é em qualquer celular.</p>
   ${S.pessoas.map((p, k) => `<div style="${k ? 'border-top:1px solid var(--line);margin-top:12px;padding-top:4px' : ''}"><div class="grid2"><div><label class="l">Como chamar</label><input class="f" data-pnome="${p.id}" value="${esc(p.nome)}" placeholder="Pessoa ${k + 1}"></div><div><label class="l">E-mail do login</label><input class="f" data-pemail="${p.id}" type="email" value="${esc(p.email || '')}" placeholder="opcional"></div></div>
-    <label class="l">Nome completo no Pix (pode pôr mais de um, separados por vírgula)</label><input class="f" data-alias="${p.id}" value="${esc(p.aliases.join(', '))}" placeholder="Ex.: ANA MARIA DA SILVA"></div>`).join('')}
+    <label class="l">Nome completo no Pix (pode pôr mais de um, separados por vírgula)</label><input class="f" data-alias="${p.id}" value="${esc((p.aliases || []).join(', '))}" placeholder="Ex.: ANA MARIA DA SILVA"></div>`).join('')}
+  <button class="btn sm" id="pes-add" style="margin-top:12px">${ti('user-plus', 15)} Adicionar pessoa</button>
   <label class="l">MEI ou outro negócio (textos que aparecem no extrato, como o CNPJ)</label><input class="f" id="mei" value="${esc((S.meiChaves || []).join(', '))}" placeholder="ex.: 12345678, 12.345.678">
   <div class="tiny" style="margin-top:4px">O que vem do MEI entra como “Retirada do MEI”. O que vai para ele é despesa (“Aporte no MEI”).</div></div>
 `,
@@ -3391,41 +3534,128 @@ function rAjustes() {
 `,
     rodape: `  <p class="tiny" style="text-align:center">${SYNC.on ? 'Os dados ficam neste celular e sincronizados com o outro celular.' : 'Os dados ficam só neste celular.'} ${storageOk ? '' : 'Atenção: o navegador não está guardando: salve backups com frequência.'}</p>`,
   };
-  const TIT = { sync: 'Família e sincronização', contas: 'Contas e cartões', cats: 'Categorias e ícones', regras: 'Regras automáticas', transf: 'Transferências', backup: 'Backup e restaurar', pessoas: 'Pessoas e MEI', tema: 'Tema' };
+  const TIT = { sync: 'Família', 'g-conta': 'Contas', 'g-cartao': 'Cartões de crédito', 'g-credito': 'Crédito em app e loja', arquivadas: 'Arquivadas', sync: 'Família', contas: 'Contas e cartões', cats: 'Categorias e ícones', regras: 'Regras automáticas', transf: 'Transferências', backup: 'Backup e restaurar', pessoas: 'Pessoas e MEI', tema: 'Tema' };
   const sec = V.maisSec;
   let h;
   if (!sec) h = menuMais(lastB);
   else h = `<div class="row" style="gap:10px;margin:2px 0 14px"><button class="voltar" data-maissec="" aria-label="Voltar">${ti('chevron-left')}</button><h1>${esc(TIT[sec] || 'Mais')}</h1></div>` + ({
-    sync: () => cardSync() + SEC.sou, contas: () => SEC.contas, cats: () => SEC.cats, regras: () => SEC.regras, transf: () => cardTransfAjustes(), backup: () => SEC.backup, pessoas: () => SEC.pessoas, tema: () => SEC.tema,
+    'g-conta': () => secGrupo('conta'), 'g-cartao': () => secGrupo('cartao'), 'g-credito': () => secGrupo('credito'), arquivadas: () => secGrupo('arquivadas'),
+    sync: () => secFamilia(), contas: () => SEC.contas, cats: () => SEC.cats, regras: () => SEC.regras, transf: () => cardTransfAjustes(), backup: () => SEC.backup, pessoas: () => SEC.pessoas, tema: () => SEC.tema,
   }[sec] || (() => ''))() + (sec === 'backup' ? SEC.perigo : '');
   $('#app').innerHTML = h;
-  if (FB_CFG && window.firebase && V.maisSec === 'sync') ligaCardSync();
-  ligaMais();
+  if (FB_CFG && window.firebase && V.maisSec === 'sync') { ligaCardSync(); ligaFamilia(); }
+  ligaMais(); if (/^g-/.test(sec || '')) ligaGrupo(sec.slice(2)); else V.ordenar = false;
   if ($('#bk-salvar')) $('#bk-salvar').onclick = salvarBackup;
   if ($('#bk-abrir')) $('#bk-abrir').onclick = () => { V.bkModo = 'abrir'; $('#bkIn').click(); };
   if ($('#bk-juntar')) $('#bk-juntar').onclick = () => { V.bkModo = 'juntar'; $('#bkIn').click(); };
   if ($('#nova-conta')) $('#nova-conta').onclick = () => editarConta(null);
   if ($('#nova-cat')) $('#nova-cat').onclick = () => editarCat(-1);
   if ($('#zerar')) $('#zerar').onclick = apagarDados;
+  if ($('#pes-add')) $('#pes-add').onclick = () => { const id = novaPessoaId(); S.pessoas.push({ id, nome: 'Pessoa ' + (S.pessoas.length + 1), aliases: [] }); S.pessoasUpd = Date.now(); save(false); render(); setTimeout(() => { const x = document.querySelector(`[data-pnome="${id}"]`); if (x) { x.select(); x.focus(); } }, 50); };
   document.querySelectorAll('[data-pnome]').forEach(i => i.onchange = () => { const v = i.value.trim(); if (!v) { i.value = pessoa(i.dataset.pnome).nome; return; } const p = pessoa(i.dataset.pnome); p.nome = v; if (!p.aliases.length) p.aliases = [v]; S.pessoasUpd = Date.now(); save(false); render(); toast('Salvo'); });
   document.querySelectorAll('[data-pemail]').forEach(i => i.onchange = () => { const v = i.value.trim().toLowerCase(), p = pessoa(i.dataset.pemail); if (v && S.pessoas.some(o => o !== p && String(o.email || '').toLowerCase() === v)) { toast('Esse e-mail já está com a outra pessoa'); i.value = p.email || ''; return; } if (v) p.email = v; else delete p.email; S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
   if ($('#mei')) $('#mei').onchange = e => { S.meiChaves = e.target.value.split(',').map(x => x.trim()).filter(Boolean); P.meiChaves = S.meiChaves; S.cfgUpd = Object.assign(S.cfgUpd || {}, { mei: Date.now() }); save(false); toast('Salvo'); };
   document.querySelectorAll('[data-alias]').forEach(i => i.onchange = () => { pessoa(i.dataset.alias).aliases = i.value.split(',').map(x => x.trim()).filter(Boolean); S.pessoasUpd = Date.now(); save(false); toast('Salvo'); });
 }
 
+// ---- Mais › Contas / Cartões / Crédito em app: lista por pessoa, adicionar e ordenar
+function resumoGrupo(g) {
+  const L = ativas().filter(c => grupoDe(c) === g && (V.quem === 'all' || c.dono === V.quem));
+  if (!L.length) return 'Nenhum ainda · toque para adicionar';
+  if (g === 'conta') { const tot = L.filter(c => !c.foraTotal && c.tipo !== 'invest').reduce((a, c) => a + (saldoConta(c) || 0), 0); return L.length + (L.length > 1 ? ' contas' : ' conta') + ' · ' + brl0(tot); }
+  const ab = L.reduce((a, c) => a + abertoCartao(c).total, 0);
+  return L.length + (g === 'cartao' ? (L.length > 1 ? ' cartões' : ' cartão') : '') + ' · ' + brl0(ab) + ' a pagar';
+}
+function secGrupo(g) {
+  const arq = g === 'arquivadas';
+  const L = ordemContas(S.contas.filter(c => arq ? c.arquivada : ativa(c) && grupoDe(c) === g && !(c.tipo === 'invest' && c.daConta && conta(c.daConta))));
+  const donos = [...S.pessoas.map(p => p.id), 'casa'].filter(d => L.some(c => c.dono === d));
+  const linha = c => V.ordenar && !arq ? `<div class="it"><span style="width:40px">${logoMini(c, 32)}</span><div class="mid"><div class="t">${esc(c.nome)}</div></div><button class="iconbtn" data-ord="${c.id}|-1" aria-label="Subir">${ti('chevron-up', 18)}</button><button class="iconbtn" data-ord="${c.id}|1" aria-label="Descer">${ti('chevron-down', 18)}</button></div>`
+    : itemConta(c) + (g === 'conta' && !arq ? cofrinhosDe(c).map(x => itemConta(x, true)).join('') : '');
+  return `${arq ? '<p class="small muted" style="margin:-6px 2px 10px">Não aparecem nas telas nem nas somas. Os lançamentos continuam no histórico. Toque para voltar.</p>' : `<div class="row" style="gap:8px;margin:-4px 0 12px"><button class="btn pri" id="g-add" style="flex:1">${ti('plus', 16)} Adicionar ${esc(GRUPOS[g].um)}</button>${L.length > 1 ? `<button class="btn" id="g-ord">${ti(V.ordenar ? 'check' : 'arrows-sort', 16)} ${V.ordenar ? 'Pronto' : 'Ordenar'}</button>` : ''}</div>`}
+  ${L.length ? donos.map(d => `<div class="dayh">${esc(pnome(d))}</div><div class="card" style="padding:4px 14px"><div class="list">${L.filter(c => c.dono === d).map(linha).join('')}</div></div>`).join('')
+    : `<div class="card empty"><div class="e">${ti(GRUPOS[g].ic, 40)}</div>${g === 'conta' ? 'Cadastre a primeira conta: banco, benefício ou cofrinho.' : g === 'cartao' ? 'Cadastre os cartões de crédito do banco.' : 'Shopee, Mercado Crédito, BônusCred, Riachuelo, crediário de loja…'}</div>`}`;
+}
+function ligaGrupo(g) {
+  if ($('#g-add')) $('#g-add').onclick = () => editarConta(null, g);
+  if ($('#g-ord')) $('#g-ord').onclick = () => { V.ordenar = !V.ordenar; render(); };
+  document.querySelectorAll('[data-ord]').forEach(x => x.onclick = () => {
+    const [id, d] = x.dataset.ord.split('|'), c = conta(id), irmas = ordemContas(ativas().filter(o => grupoDe(o) === grupoDe(c) && o.dono === c.dono));
+    irmas.forEach((o, i) => o.ordem = i); const i = irmas.indexOf(c), j = i + +d; if (j < 0 || j >= irmas.length) return;
+    [irmas[i].ordem, irmas[j].ordem] = [irmas[j].ordem, irmas[i].ordem]; const ag = Date.now(); irmas.forEach(o => o.upd = ag); save(false); render();
+  });
+}
+// ---- Mais › Família: quem tem acesso, convites e sincronização
+function secFamilia() {
+  if (!logadoOk() || !S.fam) return `<div class="card"><h2>${ti('users', 18, 'style="vertical-align:-3px"')} Família</h2><p class="small muted" style="margin-top:-4px">Os dados estão só neste celular. Entre com o seu e-mail para criar a família na nuvem ou entrar numa com código de convite.</p></div>` + (window.firebase ? cardSync() : '');
+  const F = SYNC.fam || { membros: {} }, admin = F.admin === meuUid(), M = Object.entries(F.membros || {}), CV = SYNC.convites || [];
+  const av = (pid, email) => { const cl = corPessoa(pid) || 'p1'; return `<div class="avatar" style="width:36px;height:36px;flex:none;background:var(--${cl}bg);color:var(--${cl})">${esc((pnome(pid) || email || '?')[0].toUpperCase())}</div>`; };
+  return `<div class="card"><div class="row between"><div><h2 style="margin:0">${esc(F.nome || 'Família')}</h2><div class="tiny">${M.length} ${M.length > 1 ? 'pessoas com acesso' : 'pessoa com acesso'}</div></div>${admin ? `<button class="btn pri sm" id="fm-conv">${ti('user-plus', 16)} Convidar</button>` : ''}</div>
+    <div class="list" style="margin-top:8px">${M.map(([u, m]) => `<div class="it" style="cursor:default">${av(m.pessoa, m.email)}<div class="mid"><div class="t">${esc(m.pessoa ? pnome(m.pessoa) : m.email)}${u === F.admin ? ' <span class="tag acc">admin</span>' : ''}</div><div class="s">${esc(m.email || '')}${u === meuUid() ? ' · este celular' : ''}</div></div>${admin && u !== meuUid() ? `<button class="linkbtn" data-fmrem="${u}" style="color:var(--red)">Tirar</button>` : ''}</div>`).join('')}
+    ${CV.map(c => `<div class="it" style="cursor:default">${av(c.pessoa, '')}<div class="mid"><div class="t">${esc(c.pessoaNome || pnome(c.pessoa))}</div><div class="s">Convite ${esc(c.id)} · vale até ${new Date(c.expira).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div></div><button class="linkbtn" data-fmcv="${c.id}">Enviar</button>${admin ? `<button class="linkbtn" data-fmcanc="${c.id}" style="color:var(--red)">Cancelar</button>` : ''}</div>`).join('')}</div></div>
+  ${SEC_SOU()}
+  ${cardSync()}
+  ${!admin ? `<button class="btn full" id="fm-sair" style="color:var(--red)">${ti('door-exit', 16)} Sair da família neste login</button>` : ''}`;
+}
+const SEC_SOU = () => S.pessoas.length > 1 ? `<div class="card"><h2>Este celular é de</h2><div class="seg">${S.pessoas.map(p => `<button class="${p.id === S.eu ? 'on' : ''}" data-souu="${p.id}">${esc(pnome(p.id))}</button>`).join('')}</div></div>` : '';
+async function carregaConvites() {
+  if (!SYNC.db || !S.fam || !logadoOk()) return;
+  try { const q = await SYNC.db.collection('convites').where('fam', '==', S.fam).where('usado', '==', false).get(); const ag = Date.now();
+    SYNC.convites = q.docs.map(d => Object.assign({ id: d.id }, d.data())).filter(c => c.expira > ag); if (V.maisSec === 'sync') renderSuave(true); } catch (e) {}
+}
+function linkConvite(cod) { return location.origin + location.pathname + '?convite=' + cod; }
+function enviaConvite(c) {
+  const link = linkConvite(c.id), msg = `Oi! Te convidei para a ${c.nomeFam || 'nossa família'} no GeMa, o app de finanças da família.\n\n1. Abra: ${link}\n2. Crie o seu login com e-mail e senha\n3. Use o código GEMA-${c.id}\n\nO código vale por 48 horas.`;
+  const s = sheet(`<h2>Convite para ${esc(c.pessoaNome || 'a família')}</h2><div class="codigo-grande">GEMA-${esc(c.id)}</div><p class="tiny" style="text-align:center;margin-top:0">Vale por 48 horas · só pode ser usado uma vez</p>
+    <a class="btn pri full" id="cv-wa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${ti('brand-whatsapp', 18)} Enviar pelo WhatsApp</a>
+    <button class="btn full" id="cv-copia" style="margin-top:8px">${ti('copy', 16)} Copiar mensagem</button>
+    <button class="btn full" data-fechar style="margin-top:8px;background:none">Fechar</button>`);
+  s.querySelector('#cv-copia').onclick = async () => { try { await navigator.clipboard.writeText(msg); toast('Mensagem copiada'); } catch (e) { toast('Não deu para copiar. Use o WhatsApp.'); } };
+}
+function convidarSheet() {
+  const naoEntraram = S.pessoas.filter(p => !Object.values((SYNC.fam || {}).membros || {}).some(m => m.pessoa === p.id));
+  let quem = naoEntraram[0] ? naoEntraram[0].id : 'nova';
+  const s = sheet(`<h2>Convidar para a família</h2><label class="l">Quem vai entrar</label>
+    <div class="seg st" id="cv-quem">${naoEntraram.map(p => `<button data-cq="${p.id}" class="${p.id === quem ? 'on' : ''}">${esc(pnome(p.id))}</button>`).join('')}<button data-cq="nova" class="${quem === 'nova' ? 'on' : ''}">Outra pessoa</button></div>
+    <div id="cv-nw" style="${quem === 'nova' ? '' : 'display:none'}"><label class="l">Nome</label><input class="f" id="cv-nome" placeholder="Como chamar"></div>
+    <p class="tiny">O app cria um código de 6 letras e números que vale por 48 horas. A pessoa cria o login dela e usa o código.</p>
+    <div class="grid2" style="margin-top:10px"><button class="btn" data-fechar>Cancelar</button><button class="btn pri" id="cv-ok">Gerar convite</button></div>`);
+  s.querySelectorAll('[data-cq]').forEach(x => x.onclick = () => { quem = x.dataset.cq; s.querySelectorAll('[data-cq]').forEach(y => y.classList.toggle('on', y === x)); s.querySelector('#cv-nw').style.display = quem === 'nova' ? '' : 'none'; });
+  s.querySelector('#cv-ok').onclick = async () => {
+    let pid = quem;
+    if (quem === 'nova') { const n = s.querySelector('#cv-nome').value.trim(); if (!n) { toast('Escreva o nome'); return; } pid = novaPessoaId(); S.pessoas.push({ id: pid, nome: n, aliases: [n] }); S.pessoasUpd = Date.now(); save(false); }
+    const cod = codigoConvite(), agora = Date.now();
+    const d = { fam: S.fam, nomeFam: (SYNC.fam || {}).nome || 'família', pessoa: pid, pessoaNome: pnome(pid), por: meuUid(), criado: agora, expira: agora + 48 * 3600e3, usado: false };
+    try { await SYNC.db.collection('convites').doc(cod).set(d); s.remove(); SYNC.convites = (SYNC.convites || []).concat([Object.assign({ id: cod }, d)]); render(); enviaConvite(Object.assign({ id: cod }, d)); }
+    catch (e) { toast(e && e.code === 'permission-denied' ? 'Sem permissão para convidar' : 'Sem internet agora'); }
+  };
+}
+function ligaFamilia() {
+  if (!S.fam || !logadoOk()) return;
+  if (!SYNC.convitesLidos) { SYNC.convitesLidos = true; carregaConvites(); }
+  if ($('#fm-conv')) $('#fm-conv').onclick = convidarSheet;
+  document.querySelectorAll('[data-fmcv]').forEach(x => x.onclick = () => enviaConvite((SYNC.convites || []).find(c => c.id === x.dataset.fmcv)));
+  document.querySelectorAll('[data-fmcanc]').forEach(x => x.onclick = () => confirma('Cancelar este convite?', async () => { try { await SYNC.db.collection('convites').doc(x.dataset.fmcanc).delete(); SYNC.convites = (SYNC.convites || []).filter(c => c.id !== x.dataset.fmcanc); render(); toast('Convite cancelado'); } catch (e) { toast('Não deu certo agora'); } }, 'Cancelar convite'));
+  document.querySelectorAll('[data-fmrem]').forEach(x => x.onclick = () => { const m = ((SYNC.fam || {}).membros || {})[x.dataset.fmrem] || {};
+    confirma(`Tirar o acesso de ${m.pessoa ? pnome(m.pessoa) : m.email}? Os lançamentos que essa pessoa fez continuam.`, async () => { try { await famRef().update({ ['membros.' + x.dataset.fmrem]: firebase.firestore.FieldValue.delete() }); toast('Acesso tirado'); } catch (e) { toast('Não deu certo agora'); } }, 'Tirar acesso'); });
+  if ($('#fm-sair')) $('#fm-sair').onclick = () => confirma('Sair da família? Este celular para de sincronizar e os dados ficam só aqui.', async () => {
+    try { await famRef().update({ ['membros.' + meuUid()]: firebase.firestore.FieldValue.delete() }); await SYNC.db.collection('users').doc(meuUid()).set({ fam: null }); } catch (e) {}
+    paraSync(); S.fam = null; SYNC.famOk = false; salvaLocal(); await firebase.auth().signOut(); render(); }, 'Sair');
+}
 // ---- Mais: menu principal
 function menuMais(lastB) {
   const cor = !SYNC.on ? 'var(--tx3)' : SYNC.estado === 'erro' ? 'var(--red)' : 'var(--grn)';
   const quando = SYNC.ultimo ? Math.max(0, Math.round((Date.now() - SYNC.ultimo) / 60000)) : null;
-  const L = contasDoMes(mkey(today())).filter(x => x.c.tipo === 'conta' && (V.quem === 'all' || x.c.dono === V.quem));
   const it = (sec, ic, cor2, t, sub, dir = '') => `<div class="linha" data-maissec="${sec}">${icBox(ic, cor2, 32)}<div class="mid"><div class="t" style="font-weight:500${sec === 'zerar' ? ';color:var(--red)' : ''}">${t}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>${dir}${ti('chevron-right', 16, 'style="color:var(--tx3)"')}</div>`;
   const av = (p, bg, fg) => `<div class="avatar" style="width:38px;height:38px;background:${bg};color:${fg};border:2px solid var(--card)">${esc((p.nome || '?')[0].toUpperCase())}</div>`;
   return marcaTopo() + `<div class="topo"><div class="ola">Mais</div></div>
-  <div class="menu" style="padding:12px 13px" data-maissec="sync"><div class="row" style="gap:12px;cursor:pointer"><div class="row" style="gap:0">${av(S.pessoas[0], 'var(--p1bg)', 'var(--p1)')}<div style="margin-left:-10px">${av(S.pessoas[1], 'var(--p2bg)', 'var(--p2)')}</div></div>
-    <div style="flex:1"><div style="font-weight:600">Família GeMa</div><div class="tiny" style="color:${cor}">${SYNC.on ? (SYNC.estado === 'erro' ? 'Erro na sincronização' : quando != null ? 'Sincronizado há ' + (quando < 1 ? 'menos de 1 min' : quando + ' min') : 'Sincronizando…') : 'Dados só neste celular · toque para entrar'}</div></div>${ti('chevron-right', 16, 'style="color:var(--tx3)"')}</div></div>
-  <div class="grupo-t">Contas</div><div class="menu">
-    ${L.slice(0, 4).map(x => `<div class="linha" data-contad="${x.c.id}" style="cursor:pointer"><span class="icl">${logoMini(x.c, 30)}</span><div class="mid"><div class="t" style="font-weight:500">${esc(x.c.nome)} · ${esc(pnome(x.c.dono))}</div><div class="s">${cofrinhosDe(x.c).length ? 'Conta e ' + nomeCofre(cofrinhosDe(x.c)[0]).toLowerCase() : 'Conta'}</div></div><span class="small" style="font-weight:600">${x.s == null ? '—' : esc(brl0(x.s))}</span>${ti('chevron-right', 16, 'style="color:var(--tx3)"')}</div>`).join('')}
-    <div class="linha" data-maissec="contas" style="cursor:pointer;color:var(--acc2)"><span style="width:30px;display:grid;place-items:center">${ti('plus', 18)}</span><span class="mid" style="font-weight:600">Ver todas (${S.contas.length}) e adicionar</span></div></div>
+  <div class="menu" style="padding:12px 13px" data-maissec="sync"><div class="row" style="gap:12px;cursor:pointer"><div class="row" style="gap:0">${S.pessoas.slice(0, 3).map((p, i) => `<div style="${i ? 'margin-left:-10px' : ''}">${av(p, `var(--${corPessoa(p.id) || 'p1'}bg)`, `var(--${corPessoa(p.id) || 'p1'})`)}</div>`).join('')}</div>
+    <div style="flex:1"><div style="font-weight:600">${esc((SYNC.fam && SYNC.fam.nome) || 'Família')}</div><div class="tiny" style="color:${cor}">${SYNC.on ? (SYNC.estado === 'erro' ? 'Erro na sincronização' : quando != null ? 'Sincronizado há ' + (quando < 1 ? 'menos de 1 min' : quando + ' min') : 'Sincronizando…') + ' · convidar e acessos' : 'Dados só neste celular · toque para entrar'}</div></div>${ti('chevron-right', 16, 'style="color:var(--tx3)"')}</div></div>
+  <div class="grupo-t">Contas e cartões</div><div class="menu">
+    ${it('g-conta', 'building-bank', GRUPOS.conta.cor, 'Contas', resumoGrupo('conta'))}
+    ${it('g-cartao', 'credit-card', GRUPOS.cartao.cor, 'Cartões de crédito', resumoGrupo('cartao'))}
+    ${it('g-credito', 'shopping-bag', GRUPOS.credito.cor, 'Crédito em app e loja', resumoGrupo('credito'))}
+    ${S.contas.some(c => c.arquivada) ? it('arquivadas', 'archive', '#8D9584', 'Arquivadas', S.contas.filter(c => c.arquivada).length + ' · histórico guardado') : ''}</div>
   <div class="grupo-t">Organização</div><div class="menu">
     ${it('cats', 'category', '#3F8A14', 'Categorias e ícones', 'Subcategorias e limites por mês')}
     ${it('regras', 'wand', '#6D5FD9', 'Regras automáticas', S.regras.filter(r => r.user).length + ' nomes aprendidos')}
@@ -3437,7 +3667,7 @@ function menuMais(lastB) {
     ${it('zerar', 'trash', '#D6404A', 'Apagar dados', SYNC.on ? 'Apaga nos dois celulares' : '')}</div>
   <p class="tiny" style="text-align:center;margin-top:16px">GeMa · versão ${VERSAO}</p>`;
 }
-const VERSAO = 24;
+const VERSAO = 25;
 // ---- Mais › Transferências: CPF de cada um, MEI e reclassificar
 function cardTransfAjustes() {
   return `<div class="card"><h2>CPF de cada um</h2><p class="small muted" style="margin-top:-4px">Só os 6 dígitos do meio, como o Nubank e o Mercado Pago mostram no extrato (•••.<b>456.789</b>-••). Com eles, o Pix entre vocês vira transferência mesmo quando o nome não aparece.</p>
@@ -3563,17 +3793,28 @@ function detalheContaSheet(c) {
     q.querySelector('#dp-ok').onclick = () => { c.agencia = q.querySelector('#dp-a').value.replace(/\D/g, ''); c.numero = q.querySelector('#dp-c').value.trim(); c.dadosAuto = false; c.upd = Date.now(); pareiaTransf(); save(); q.remove(); render(); reabre(); toast('Salvo'); };
   };
 }
-function editarConta(c) {
-  const novo = !c; const b = c || { id: uid(), nome: '', dono: S.eu, tipo: 'conta', banco: '', chaves: [] };
+function editarConta(c, grupo, pre = {}) {
+  const novo = !c; grupo = c ? grupoDe(c) : grupo || 'conta';
+  const b = c || { id: uid(), nome: '', dono: pre.dono || (V.quem !== 'all' && pessoa(V.quem) ? V.quem : S.eu), tipo: grupo === 'cartao' ? 'cartao' : grupo === 'credito' ? 'loja' : 'conta', banco: '', chaves: [] };
   const saldoAtual = novo ? null : saldoConta(b);
-  const s = sheet(`<div class="row between"><h2 style="margin:0">${novo ? 'Nova conta' : esc(b.nome)}</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ic('x')}</button></div>
-  <div class="row" style="gap:12px;margin-top:12px"><span id="cc-ico-prev">${logoBanco(b, 48)}</span><div style="flex:1"><button class="btn sm" id="cc-ico">${ti('photo', 16)} Trocar ícone</button> <button class="btn sm" id="cc-ico-x" ${b.icone ? '' : 'style="display:none"'}>Usar o padrão</button><div class="tiny" style="margin-top:4px">Escolha uma imagem do celular. Ela fica quadrada e pequena.</div></div></div>
+  const TPS = grupo === 'conta' ? [['conta', 'Conta'], ['beneficio', 'Benefício'], ['invest', 'Cofrinho']] : [[b.tipo, TIPOS_CONTA[b.tipo]]];
+  const libOrd = LOGOS.slice().sort((x, y) => (CATALOGO[y] && CATALOGO[y][grupo] ? 1 : 0) - (CATALOGO[x] && CATALOGO[x][grupo] ? 1 : 0));
+  const logoAtual = b.icone ? '' : b.logo || (bancoDe(b) || [])[4] || '';
+  const pp = S.pessoas.find(x => x.id === b.dono);
+  const s = sheet(`<div class="row between"><h2 style="margin:0">${novo ? 'Novo ' + (grupo === 'conta' ? 'cadastro de conta' : GRUPOS[grupo].um) : esc(b.nome)}</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ic('x')}</button></div>
+  ${!novo && b.arquivada ? `<div class="banner amb" style="margin:10px 0 0">${ti('archive', 18)} <span>Arquivada: não aparece nas telas. O histórico continua guardado.</span></div>` : ''}
+  <label class="l">Logo</label>
+  <div class="logolib" id="cc-lib">${libOrd.map(l => `<button type="button" data-logo="${l}" class="${l === logoAtual ? 'on' : ''}"><img src="logo-${l}.png" alt=""><span>${esc(LOGO_NOME[l])}</span></button>`).join('')}
+    <button type="button" id="cc-ico" class="${b.icone ? 'on' : ''}"><span class="up" id="cc-ico-prev">${b.icone ? `<img src="${esc(b.icone)}" alt="">` : ti('photo-plus', 20)}</span><span>Outra foto</span></button></div>
+  <div class="tiny" id="cc-preset" style="margin-top:6px"></div>
   <input type="file" accept="image/*" id="cc-ico-in" class="hide">
-  <label class="l">Nome</label><input class="f" id="cc-nome" value="${esc(b.nome)}" placeholder="Nubank">
+  <label class="l">Nome</label><input class="f" id="cc-nome" value="${esc(b.nome)}" placeholder="${grupo === 'cartao' ? 'Cartão Nubank' : grupo === 'credito' ? 'Shopee' : 'Nubank'}">
   <div class="grid2"><div><label class="l">De quem</label><select class="f" id="cc-dono">${[...S.pessoas.map(p => [p.id, p.nome.split(' ')[0]]), ['casa', 'Casa']].map(([k, n]) => `<option value="${k}" ${k === b.dono ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
-  <div><label class="l">Tipo</label><select class="f" id="cc-tipo">${Object.entries(TIPOS_CONTA).map(([k, n]) => `<option value="${k}" ${k === b.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
-  <div id="cc-cart"><label class="l">Como esse cartão cobra</label>
-    <div class="seg cobra" id="cc-cobra">${Object.entries(COBRA).map(([k, n]) => `<button type="button" data-cobra="${k}" class="${cobraDe(b) === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+  <div ${TPS.length < 2 ? 'style="display:none"' : ''}><label class="l">Tipo</label><select class="f" id="cc-tipo">${TPS.map(([k, n]) => `<option value="${k}" ${k === b.tipo ? 'selected' : ''}>${n}</option>`).join('')}</select></div></div>
+  ${grupo === 'conta' ? `<div class="campo" style="margin-top:12px"><span class="k">${ti('sum', 18)}</span><div class="v"><div>Entra no saldo total</div><div class="tiny">Desligado, a conta aparece mas não soma no “Saldo nas contas”</div></div><button class="tg ${b.foraTotal ? '' : 'on'}" id="cc-total" type="button" aria-label="Entra no saldo total"></button></div>
+  <div class="campo"><span class="k">${ti('star', 18)}</span><div class="v"><div>Conta principal de <span id="cc-pnome">${esc(pnome(b.dono))}</span></div><div class="tiny">Já vem escolhida no “Novo gasto”</div></div><button class="tg ${pp && pp.contaPrincipal === b.id ? 'on' : ''}" id="cc-princ" type="button" aria-label="Conta principal"></button></div>` : ''}
+  <div id="cc-cart"><label class="l" ${grupo === 'cartao' ? 'style="display:none"' : ''}>Como cobra</label>
+    <div class="seg cobra" id="cc-cobra" ${grupo === 'cartao' ? 'style="display:none"' : ''}>${Object.entries(COBRA).map(([k, n]) => `<button type="button" data-cobra="${k}" class="${cobraDe(b) === k ? 'on' : ''}">${n}</button>`).join('')}</div>
     <label class="l">Limite (R$)</label><input class="f" id="cc-lim" inputmode="decimal" value="${b.limite ? String(b.limite.toFixed(2)).replace('.', ',') : ''}" placeholder="ex.: 2.000,00">
     <div id="cc-w-fatura"><div class="grid2"><div><label class="l">Dia do vencimento</label><input class="f" id="cc-venc" inputmode="numeric" value="${b.venc || ''}" placeholder="ex.: 15"></div><div><label class="l">Dia do fechamento <span class="tag acc" id="cc-auto" style="display:none;padding:1px 6px">auto</span></label><input class="f" id="cc-fech" inputmode="numeric" value="${b.fech || ''}" placeholder="ex.: 8"></div></div>
       <div class="tiny" id="cc-fdica" style="margin-top:4px"></div>
@@ -3590,11 +3831,34 @@ function editarConta(c) {
   <div id="cc-ben"><label class="l">Saldo de hoje (R$)</label><input class="f" id="cc-saldo" inputmode="decimal" value="${saldoAtual != null ? String(saldoAtual.toFixed(2)).replace('.', ',') : ''}" placeholder="Confira no app do banco">
     <div class="tiny" style="margin-top:4px">Os lançamentos importados depois de hoje vão somando a partir deste valor. Importar extrato (OFX, CSV ou PDF) atualiza o saldo sozinho.</div>
     <div id="cc-rinv" class="tiny" style="margin-top:6px;color:var(--grn)">Cofrinho: se o saldo de hoje for maior que o calculado, a diferença entra como “Rendimento do cofrinho”.</div></div>
-  <div class="grid2" style="margin-top:18px">${novo ? '<button class="btn" data-fechar>Cancelar</button>' : '<button class="btn danger" id="cc-del">Excluir</button>'}<button class="btn pri" id="cc-ok">Salvar</button></div>`);
-  let icone = b.icone;
-  const prevIco = () => { s.querySelector('#cc-ico-prev').innerHTML = logoBanco(Object.assign({}, b, { icone, banco: b.banco || s.querySelector('#cc-nome').value }), 48); s.querySelector('#cc-ico-x').style.display = icone ? '' : 'none'; };
+  ${novo ? '' : `<button class="btn full" id="cc-arq" style="margin-top:14px">${ti(b.arquivada ? 'archive-off' : 'archive', 16)} ${b.arquivada ? 'Voltar para as telas' : 'Arquivar'}</button>`}
+  <div class="grid2" style="margin-top:10px">${novo ? '<button class="btn" data-fechar>Cancelar</button>' : '<button class="btn danger" id="cc-del">Excluir</button>'}<button class="btn pri" id="cc-ok">Salvar</button></div>`);
+  let icone = b.icone, logo = logoAtual, nomePreset = '';
+  const prevIco = () => { s.querySelectorAll('[data-logo]').forEach(x => x.classList.toggle('on', !icone && x.dataset.logo === logo)); s.querySelector('#cc-ico').classList.toggle('on', !!icone); s.querySelector('#cc-ico-prev').innerHTML = icone ? `<img src="${esc(icone)}" alt="">` : ti('photo-plus', 20); };
   s.querySelector('#cc-ico').onclick = () => s.querySelector('#cc-ico-in').click();
-  s.querySelector('#cc-ico-x').onclick = () => { icone = undefined; prevIco(); };
+  // escolher a logo da biblioteca preenche o que o app já sabe dessa instituição
+  s.querySelectorAll('[data-logo]').forEach(x => x.onclick = () => {
+    logo = x.dataset.logo; icone = undefined; prevIco();
+    const P0 = (CATALOGO[logo] || {})[grupo] || {}, q = id => s.querySelector(id), nm = q('#cc-nome');
+    const nomeNovo = P0.nome || LOGO_NOME[logo];
+    if (!nm.value.trim() || nm.value === nomePreset) { nm.value = nomeNovo; nomePreset = nomeNovo; }
+    if (P0.tipo && q('#cc-tipo').querySelector(`option[value="${P0.tipo}"]`)) { q('#cc-tipo').value = P0.tipo; q('#cc-tipo').dispatchEvent(new Event('change')); }
+    const fez = [];
+    if (grupo !== 'conta') {
+      if (P0.cobra && grupo === 'credito') { const bt = s.querySelector(`[data-cobra="${P0.cobra}"]`); if (bt) bt.click(); fez.push(COBRA[P0.cobra].toLowerCase()); }
+      if (P0.prazo) { q('#cc-prazo').value = P0.prazo; fez.push('vence em ' + P0.prazo + ' dias'); }
+      if (P0.venc && !q('#cc-venc').value) { q('#cc-venc').value = P0.venc; q('#cc-fech').value = P0.fech || ''; fez.push('vencimento dia ' + P0.venc); }
+      if (P0.fechNu) fez.push('fechamento 7 dias antes do vencimento');
+      if (P0.pagChaves) { const at = q('#cc-pagch').value.split(',').map(z => z.trim()).filter(Boolean); q('#cc-pagch').value = [...new Set([...at, ...P0.pagChaves])].join(', '); fez.push('pagamento no extrato'); }
+      q('#cc-venc').dispatchEvent(new Event('input'));
+    }
+    q('#cc-preset').innerHTML = fez.length ? `${ti('sparkles', 13, 'style="vertical-align:-2px;color:var(--acc2)"')} ${esc(LOGO_NOME[logo])} preenche: ${esc(fez.join(', '))}` : '';
+  });
+  if (novo && pre.logo) { const lb = s.querySelector(`[data-logo="${pre.logo}"]`); if (lb) lb.click(); }
+  if (novo && pre.tipo && s.querySelector(`#cc-tipo option[value="${pre.tipo}"]`)) { s.querySelector('#cc-tipo').value = pre.tipo; s.querySelector('#cc-tipo').dispatchEvent(new Event('change')); }
+  if (s.querySelector('#cc-dono')) s.querySelector('#cc-dono').addEventListener('change', e => { const z = s.querySelector('#cc-pnome'); if (z) z.textContent = pnome(e.target.value); });
+  s.querySelectorAll('#cc-total, #cc-princ').forEach(x => x.onclick = () => x.classList.toggle('on'));
+  if (s.querySelector('#cc-arq')) s.querySelector('#cc-arq').onclick = () => { b.arquivada = !b.arquivada; if (!b.arquivada) delete b.arquivada; b.upd = Date.now(); save(); s.remove(); render(); toast(b.arquivada ? 'Arquivada. Está em Mais › Arquivadas.' : 'Voltou para as telas'); };
   s.querySelector('#cc-ico-in').onchange = e => { const f = e.target.files[0]; if (!f) return; const img = new Image(); img.onload = () => {
     const S2 = 128, cv = document.createElement('canvas'); cv.width = cv.height = S2; const g = cv.getContext('2d'); const k = Math.max(S2 / img.width, S2 / img.height);
     g.imageSmoothingQuality = 'high'; g.drawImage(img, (S2 - img.width * k) / 2, (S2 - img.height * k) / 2, img.width * k, img.height * k); icone = cv.toDataURL('image/png'); if (icone.length > 30000) icone = cv.toDataURL('image/jpeg', .88); URL.revokeObjectURL(img.src); prevIco(); };
@@ -3649,7 +3913,10 @@ function editarConta(c) {
       const lv = P.money(s.querySelector('#cc-lim').value); if (lv > 0) b.limite = Math.round(lv * 100) / 100; else delete b.limite;
       b.pagaPor = s.querySelector('#cc-pagapor').value || undefined; b.pagChaves = s.querySelector('#cc-pagch').value.split(',').map(x => x.trim()).filter(Boolean); }
     if (b.tipo === 'invest') b.daConta = s.querySelector('#cc-daconta').value || undefined;
-    if (icone) b.icone = icone; else delete b.icone;
+    if (icone) { b.icone = icone; delete b.logo; } else { delete b.icone; if (logo) { b.logo = logo; b.banco = LOGO_NOME[logo]; } }
+    if (s.querySelector('#cc-total')) { if (s.querySelector('#cc-total').classList.contains('on')) delete b.foraTotal; else b.foraTotal = true; }
+    if (s.querySelector('#cc-princ')) { const on = s.querySelector('#cc-princ').classList.contains('on'); for (const p of S.pessoas) { if (p.contaPrincipal === b.id && (!on || p.id !== b.dono)) { delete p.contaPrincipal; S.pessoasUpd = Date.now(); } } const pd = pessoa(b.dono); if (on && pd && pd.contaPrincipal !== b.id) { pd.contaPrincipal = b.id; S.pessoasUpd = Date.now(); } }
+    if (novo) b.ordem = Math.max(0, ...S.contas.filter(x => grupoDe(x) === grupoDe(b)).map(x => x.ordem ?? 0)) + 1;
     const sv = s.querySelector('#cc-saldo').value.trim(), sn = P.money(sv);
     if (sv && !isNaN(sn) && b.tipo === 'invest' && saldoAtual != null && sn - saldoAtual > 0.004 && !novo) {
       // cofrinho: o que cresceu sem ninguém guardar é rendimento (separado do rendimento da conta)
@@ -3662,7 +3929,7 @@ function editarConta(c) {
     conciliaFaturas();
     // recalcula vencimentos sem data
     for (const t of live()) if (t.conta === b.id && !t.venc && naFatura(t)) { const v = vencDe(b, t.data); if (v) { t.venc = v; t.upd = Date.now(); } }
-    if (novo) S.contas.push(b); save(); s.remove(); render(); toast('Conta salva');
+    if (novo) S.contas.push(b); save(); s.remove(); if (pre.aoSalvar) pre.aoSalvar(b.id); else render(); toast(novo ? GRUPOS[grupo].um[0].toUpperCase() + GRUPOS[grupo].um.slice(1) + ' cadastrado' + (grupo === 'conta' ? 'a' : '') : 'Salvo');
   };
 }
 function escolheIcone(atual, cor, aoEscolher, comCor = true) {
