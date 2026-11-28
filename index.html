@@ -1241,6 +1241,7 @@ const CFG = {
   pessoas: () => ({ pessoas: S.pessoas, upd: S.pessoasUpd || 0 }),
   orc: () => ({ orc: S.orc || {}, orcUpd: S.orcUpd || {} }),
   apelidos: () => ({ itens: S.apelidos || {} }),
+  recign: () => ({ itens: S.recIgn || [], upd: S.recIgnUpd || 0 }),
   meta: () => ({ mei: S.meiChaves || [], meiUpd: (S.cfgUpd || {}).mei || 0, apagados: S.apagados || {} }),
 };
 function recebeCfg(snap) {
@@ -1260,6 +1261,7 @@ function recebeCfg(snap) {
     for (const r of docs.regras.itens || []) { const a = m.get(P.norm(r.k)); if (!a) S.regras.push(r); else if ((r.upd || 0) > (a.upd || 0)) Object.assign(a, r); }
     const apR = ap.regras || {}; S.regras = S.regras.filter(r => !(r.user && apR[P.norm(r.k)] >= (r.upd || 0)));
   }
+  if (docs.recign && (docs.recign.upd || 0) > (S.recIgnUpd || 0)) { S.recIgn = docs.recign.itens || []; S.recIgnUpd = docs.recign.upd; }
   if (docs.apelidos) { S.apelidos = S.apelidos || {}; for (const k in docs.apelidos.itens || {}) { const r = docs.apelidos.itens[k]; if (r && (r.upd || 0) > ((S.apelidos[k] || {}).upd || 0)) S.apelidos[k] = r; } }
   if (docs.cats && (docs.cats.upd || 0) > (S.catsUpd || 0)) { S.cats = docs.cats.cats; S.catsUpd = docs.cats.upd; }
   if (docs.pessoas && (docs.pessoas.upd || 0) > (S.pessoasUpd || 0)) { S.pessoas = docs.pessoas.pessoas; S.pessoasUpd = docs.pessoas.upd; }
@@ -1835,6 +1837,7 @@ function filaRevisao(mk) {
   const G = new Map(); for (const t of live()) { if (mesDe(t) !== mk || !filtraQuem(t) || t.tipo !== 'despesa' || t.cat || interno(t)) continue; const k = P.norm(t.nome || t.desc); const g = G.get(k) || { nome: t.nome || t.desc, L: [] }; g.L.push(t); G.set(k, g); }
   for (const g of [...G.values()].sort((a, b) => b.L.length - a.L.length)) F.push({ k: 'cat', g });
   for (const c of faturasFaltando(mk)) F.push({ k: 'fat', c });
+  if (mk === mkey(today())) for (const r of recorrentes()) F.push({ k: 'rec', r });
   return F;
 }
 function revisaoRapida(mk = V.mes) {
@@ -1845,7 +1848,7 @@ function revisaoRapida(mk = V.mes) {
   s.addEventListener('click', e => { if (e.target === s || e.target.closest('[data-fechar]')) { if (feitos) save(); render(); } });
   const vivo = t => t && !t.del && S.tx.includes(t);
   const lin = (t, cor) => { const c = conta(t.conta) || {}; return `<div class="linha"><span class="icl">${logoMini(c, 30)}</span><div class="mid"><div class="t" style="font-weight:500">${esc(t.nome || t.desc)}</div><div class="s">${dshort(t.data)} · ${esc(c.nome || '')}${S.pessoas.length > 1 ? ' ' + esc(pnome(c.dono)) : ''}${t.desc && t.desc !== t.nome ? ' · ' + esc(t.desc) : ''}</div></div><span class="v" style="color:var(--${cor || (t.valor > 0 ? 'grn' : 'red')})">${t.valor > 0 ? '+ ' : ''}${esc(brl(t.valor))}</span></div>`; };
-  const ainda = x => x.k === 'susp' ? vivo(x.a) && vivo(x.b) && !x.a.par && !x.b.par && !x.a.dispensa : x.k === 'sempar' ? vivo(x.t) && x.t.tipo === 'transf' && !x.t.par : x.k === 'dup' ? vivo(x.a) && vivo(x.b) && !x.a.dispensaDup : x.k === 'cat' ? x.g.L.some(t => vivo(t) && t.tipo === 'despesa' && !t.cat) : true;
+  const ainda = x => x.k === 'rec' ? !(S.recIgn || []).includes(x.r.chave) && recorrentes().some(y => y.chave === x.r.chave) : x.k === 'susp' ? vivo(x.a) && vivo(x.b) && !x.a.par && !x.b.par && !x.a.dispensa : x.k === 'sempar' ? vivo(x.t) && x.t.tipo === 'transf' && !x.t.par : x.k === 'dup' ? vivo(x.a) && vivo(x.b) && !x.a.dispensaDup : x.k === 'cat' ? x.g.L.some(t => vivo(t) && t.tipo === 'despesa' && !t.cat) : true;
   const prox = (fez) => { if (fez) feitos++; i++; while (i < F.length && !ainda(F[i])) i++; desenha(); };
   const desenha = () => {
     const c = s.querySelector('#rr-c');
@@ -1862,6 +1865,8 @@ function revisaoRapida(mk = V.mes) {
       h += `<b>Sem categoria</b><div class="menu" style="margin-top:8px">${x.g.L.length > 1 ? `<div class="linha"><span class="icl">${catIc('despesa', '', 30)}</span><div class="mid"><div class="t" style="font-weight:500">${esc(x.g.nome)}</div><div class="s">${x.g.L.length} lançamentos no mês</div></div><span class="v" style="color:var(--red)">${esc(brl(tot))}</span></div>` : lin(t0)}</div>
         ${sg ? `<div class="ecsug" style="margin-top:10px">${iconeClass(sg.v, 34)}<div class="mid"><div class="t">Sugestão: ${esc(rotuloClass(sg.v))}</div><div class="s">${sg.por === 'regra' ? 'Regra do app para esse nome' : 'Igual a nomes parecidos que vocês já classificaram'}</div></div></div>` : ''}`;
       bts = sg ? `<button class="btn pri full" data-rr="aceita">${ti('check', 16)} Aceitar</button><div class="grid2" style="margin-top:8px"><button class="btn" data-rr="outra">Outra</button><button class="btn" data-rr="pula">Pular</button></div>` : `<button class="btn pri full" data-rr="outra">${ti('category', 16)} Escolher categoria</button><button class="btn full" data-rr="pula" style="margin-top:8px">Pular</button>`; }
+    else if (x.k === 'rec') { h += `<b>Cobrança que se repete</b><p class="small muted" style="margin:4px 0 8px">Apareceu ${x.r.meses} meses seguidos com o mesmo valor, perto do dia ${x.r.dia}.</p><div class="menu"><div class="linha"><span class="icl">${catIc('despesa', x.r.cat, 30)}</span><div class="mid"><div class="t" style="font-weight:500">${esc(x.r.nome)}</div><div class="s">${esc(x.r.conta)}</div></div><span class="v">${esc(brl(x.r.valor))}<div class="tiny">por mês</div></span></div></div>`;
+      bts = `<button class="btn pri full" data-rr="fixa">${ti('repeat', 16)} Virar conta fixa</button><div class="grid2" style="margin-top:8px"><button class="btn" data-rr="recign">Não perguntar mais</button><button class="btn" data-rr="pula">Pular</button></div>`; }
     else if (x.k === 'fat') { h += `<b>Fatura não importada</b><p class="small muted" style="margin:4px 0 8px">A fatura de ${MES[+mk.slice(5) - 1].toLowerCase()} do ${esc(x.c.nome)}${S.pessoas.length > 1 ? ' (' + esc(pnome(x.c.dono)) + ')' : ''} ainda não entrou. Sem ela, os gastos do cartão ficam de fora do mês.</p>`;
       bts = `<button class="btn pri full" data-rr="imp">${ti('upload', 16)} Importar agora</button><button class="btn full" data-rr="pula" style="margin-top:8px">Pular</button>`; }
     c.innerHTML = h + `<div style="margin-top:14px">${bts}</div>`;
@@ -1879,6 +1884,8 @@ function revisaoRapida(mk = V.mes) {
     if (a === 'aceita' && x.sg) return classifica(x, x.sg.v);
     if (a === 'outra') return escolheClass(x.sg ? x.sg.v : 'despesa||', { nome: x.g.nome, t: x.g.L[0], sugestao: x.sg, aoEscolher: v => classifica(x, v) });
     if (a === 'imp') { s.remove(); if (feitos) save(); V.tab = 'importar'; render(); }
+    if (a === 'recign') { ignoraRec(x.r.chave); return prox(true); }
+    if (a === 'fixa') { const r = x.r; prox(true); return editarFixa(null, { nome: r.nome, chave: r.chave, valor: r.valor, dia: r.dia, tipo: 'despesa', cat: r.cat, sub: r.sub, dono: r.dono || S.eu }); }
   };
   if (!ainda(F[0])) prox(false); else desenha();
 }
@@ -1891,12 +1898,40 @@ function avisosInicio(mk, T) {
   for (const c of faturasFaltando(mk)) A.push(['amb', 'alert-triangle', `Fatura de ${nm} do ${c.nome} (${pnome(c.dono)}) não importada`, 'Importar', 'data-tab="importar"']);
   for (const x of saldosQueNaoBatem(mk)) A.push(['red', 'scale', `Saldo do ${x.c.nome} (${pnome(x.c.dono)}) não bate com o extrato de ${dshort(x.h.data)}: diferença de ${brl(Math.abs(x.dif))}`, 'Ver', `data-contad="${x.c.id}"`]);
   const r = itensRevisar(mk); if (r.total) A.push(['blu', 'help-circle', `${r.total} ${r.total > 1 ? 'itens' : 'item'} para revisar${r.susp ? ` (${r.susp} parece${r.susp > 1 ? 'm' : ''} transferência)` : ''}`, 'Revisar', 'data-revisar']);
-  for (const [k, o] of Object.entries(S.orc || {})) { const v = T.porCat[k] || 0; if (o > 0 && v > o) A.push(['red', 'target', `${k} passou do limite: ${brl0(v)} de ${brl0(o)}`, 'Ver', 'data-tab="metas"']); }
+  for (const [k, o] of Object.entries(S.orc || {})) { if (!(o > 0)) continue; const v = T.porCat[k] || 0, rt = ritmoMes(mk, v);
+    if (v > o) A.push(['red', 'target', `${k} passou do limite: ${brl0(v)} de ${brl0(o)}`, 'Ver', 'data-tab="metas"']);
+    else if (v >= o * 0.8) A.push(['amb', 'target', `${k}: ${Math.round(v / o * 100)}% do limite usado${rt ? `, faltam ${rt.faltam} dia${rt.faltam === 1 ? '' : 's'}` : ''}${rt && rt.proj > o ? ` · no ritmo atual fecha em ${brl0(rt.proj)}` : ''}`, 'Ver', 'data-tab="metas"']);
+    else if (rt && rt.dia >= 5 && rt.proj > o * 1.05) A.push(['amb', 'target', `${k}: no ritmo atual fecha o mês em ${brl0(rt.proj)} (limite ${brl0(o)})`, 'Ver', 'data-tab="metas"']); }
+  for (const x of aumentosFixas(mk)) A.push(['amb', 'trending-up', `${x.f.nome} subiu de ${brl(x.antes)} para ${brl(x.agora)}`, 'Ver', `data-efixa="${x.f.id}"`, `data-avok="${x.k}"`]);
   if (S.pessoas.some(p => !p.nome)) A.push(['acc', 'users', 'Coloque os nomes de vocês', 'Ir', 'data-irpessoas']);
   if (semBackup) A.push(['amb', 'device-floppy', `${S.mud} alteração(ões) sem backup`, 'Salvar', 'data-tab="ajustes"']);
   if (FB_CFG && window.firebase && !SYNC.user && !S.dicaSync) A.push(['acc', 'cloud', 'Sincronize os dois celulares entrando com o seu e-mail', 'Entrar', 'data-tab="ajustes"', 'data-dicasync']);
   if (ios && !S.dicaIos) A.push(['amb', 'device-mobile-message', 'No iPhone, use Compartilhar → Adicionar à Tela de Início para o Safari não apagar os dados', 'Ok', 'data-dicaios']);
   return A.map(([cor, ic, tx, ac, at, fecha]) => `<div class="aviso ${cor}" ${at}>${ti(ic, 18)}<span class="tx">${esc(tx)}</span><b class="ac">${esc(ac)}</b>${fecha ? `<button class="iconbtn" ${fecha} aria-label="Fechar aviso" style="width:24px;height:24px;box-shadow:none;background:none">${ti('x', 14)}</button>` : ''}</div>`).join('');
+}
+// ritmo do mês atual: quanto vai dar no fim do mês se continuar gastando assim
+function ritmoMes(mk, v) {
+  const hoje = today(); if (mk !== mkey(hoje)) return null;
+  const dia = +hoje.slice(8), dm = new Date(+mk.slice(0, 4), +mk.slice(5), 0).getDate();
+  return { dia, faltam: dm - dia, proj: v / dia * dm };
+}
+// conta fixa que veio mais cara que no mês anterior (pelo lançamento que o app achou no extrato)
+function aumentosFixas(mk) {
+  const out = [], ok = S.avOk || {};
+  for (const f of S.fixas || []) { if (f.tipo !== 'despesa' || (V.quem !== 'all' && f.dono !== V.quem && f.dono !== 'casa')) continue;
+    const k = 'aum:' + f.id + ':' + mk; if (ok[k]) continue;
+    const a = fixaPaga(f, mk), b = fixaPaga(f, addMonth(mk, -1)); if (!a || !b || a.manual || b.manual || a.id === b.id) continue;
+    const agora = Math.abs(a.valor), antes = Math.abs(b.valor); if (agora > antes * 1.05 + 1) out.push({ f, k, agora, antes }); }
+  return out;
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-avok]'); if (!b) return; e.stopPropagation(); e.preventDefault(); (S.avOk = S.avOk || {})[b.dataset.avok] = 1; salvaLocal(); render(); }, true);
+// média dos gastos dos meses anteriores com extrato (até 3), para comparar o mês com o normal
+function mediaGastos(mk, n = 3) {
+  const M = []; for (let i = 1; i <= 6 && M.length < n; i++) { const m = addMonth(mk, -i); if (temDadosMes(m)) M.push(totaisMes(m)); }
+  const R = { n: M.length, desp: 0, porCat: {}, porSub: {} }; if (!M.length) return R;
+  for (const T of M) { R.desp += T.desp / M.length; for (const k in T.porCat) R.porCat[k] = (R.porCat[k] || 0) + T.porCat[k] / M.length;
+    for (const k in T.porSub) { const o = R.porSub[k] = R.porSub[k] || {}; for (const sb in T.porSub[k]) o[sb] = (o[sb] || 0) + T.porSub[k][sb] / M.length; } }
+  return R;
 }
 // o que falta pagar e receber no mês (fixas, parcelas, faturas em aberto, atrasadas)
 function faltaItens(mk) {
@@ -1933,7 +1968,7 @@ function cardFaturas(mk) {
   const F = faturasDoMes(mk); if (!F.length) return '';
   const hoje = today();
   return `<div class="card"><div class="row between" style="margin-bottom:4px"><h2 style="margin:0">Cartões e crédito</h2><span class="row" style="gap:10px"><b class="small">${esc(brl(soma(F, 'total')))}</b><button class="linkbtn" data-tab="ajustes" data-irajc="g-cartao">Ver todos</button></span></div>
-    ${F.map(f => { const lim = f.c.limite ? Math.min(100, abertoCartao(f.c).total / f.c.limite * 100) : null; return `<div class="linha" data-cartaod="${f.c.id}" style="cursor:pointer"><span class="icl">${logoMini(f.c, 34)}</span><div class="mid"><div class="t">${esc(f.c.nome)} <span class="tiny">${esc(pnome(f.c.dono))}</span></div><div class="s">${cobraDe(f.c) === 'prazo' ? 'Cada compra vence em ' + f.c.prazo + ' dias' : cobraDe(f.c) === 'parcelas' ? 'Parcelas · vence ' + dshort(f.venc) : 'Fatura de ' + MESC[+f.venc.slice(5, 7) - 1] + ' · vence ' + dshort(f.venc)}</div>${lim != null ? `<div class="limbar" style="margin:6px 0 0;height:5px"><i style="width:${lim.toFixed(1)}%"></i></div>` : ''}</div><div class="v">${esc(brl(f.total))}</div>
+    ${F.map(f => { const lim = f.c.limite ? Math.min(100, abertoCartao(f.c).total / f.c.limite * 100) : null; return `<div class="linha" data-cartaod="${f.c.id}" style="cursor:pointer"><span class="icl">${logoMini(f.c, 34)}</span><div class="mid"><div class="t">${esc(f.c.nome)} <span class="tiny">${esc(pnome(f.c.dono))}</span></div><div class="s">${cobraDe(f.c) === 'prazo' ? 'Cada compra vence em ' + f.c.prazo + ' dias' : cobraDe(f.c) === 'parcelas' ? 'Parcelas · vence ' + dshort(f.venc) : 'Fatura de ' + MESC[+f.venc.slice(5, 7) - 1] + ' · vence ' + dshort(f.venc)}${melhorDia(f.c) && +hoje.slice(8) === melhorDia(f.c) ? ' · <b style="color:var(--grn)">hoje é o melhor dia de compra</b>' : ''}</div>${lim != null ? `<div class="limbar" style="margin:6px 0 0;height:5px"><i style="width:${lim.toFixed(1)}%"></i></div>` : ''}</div><div class="v">${esc(brl(f.total))}</div>
       <span class="selo ${f.aberto > 0.004 ? (f.venc < hoje ? 'up' : 'ab') : 'pg'}">${f.aberto > 0.004 ? (f.venc < hoje ? 'Atrasada' : 'Aberta') : 'Paga'}</span></div>`; }).join('')}</div>`;
 }
 // comparação com o mês passado: só quando o mês passado tem extrato
@@ -1947,12 +1982,14 @@ function seloVar(v, ant, ok) {
 function cardParaOnde(T, Ta, okAnt) {
   const cats = Object.entries(T.porCat).filter(([, v]) => v > 0.004).sort((a, b) => b[1] - a[1]);
   if (!cats.length) return `<div class="card" id="para-onde"><h2>Para onde foi</h2><div class="empty"><div class="e">${ti('chart-pie', 40)}</div>Nenhuma despesa neste mês.<br><button class="btn pri sm" style="margin-top:10px" data-tab="importar">Importar extrato</button></div></div>`;
-  const tot = cats.reduce((a, [, v]) => a + v, 0), mx = cats[0][1], dif = T.desp - Ta.desp, mAnt = MESC[+addMonth(V.mes, -1).slice(5) - 1];
+  const tot = cats.reduce((a, [, v]) => a + v, 0), mx = cats[0][1], dif = T.desp - Ta.desp, mAnt = Ta.n > 1 ? 'média de ' + Ta.n + ' meses' : 'mês anterior';
+  const acima = okAnt ? cats.map(([k, v]) => [k, v - (Ta.porCat[k] || 0), Ta.porCat[k] || 0]).filter(([, d, m]) => m > 0.004 && d > Math.max(30, m * 0.15)).sort((a, b) => b[1] - a[1]).slice(0, 2) : [];
   const mostrar = V.todasCat ? cats : cats.slice(0, 4);
   return `<div class="card" id="para-onde"><div class="row between"><h2 style="margin:0">Para onde foi</h2>${okAnt ? `<span class="tiny">vs ${mAnt}</span>` : ''}</div>
     <div class="row" style="gap:14px;margin:8px 0 4px">${rosca(cats, T.desp, '').replace('class="rosca"', 'class="rosca" style="width:96px;height:96px;margin:0"').replace('width="168" height="168"', 'width="96" height="96"').replace(/<div class="rc">[\s\S]*<\/div><\/div>$/, '</div>')}
       <div><div class="tiny">Total gasto</div><div style="font-size:21px;font-weight:700;letter-spacing:-.02em">${brlC(T.desp)}</div>
-      ${okAnt && Ta.desp > 0.004 ? `<div class="small" style="margin-top:3px">${seloVar(T.desp, Ta.desp, true)} <span class="muted">${esc(brl0(Math.abs(dif)))} ${dif >= 0 ? 'a mais' : 'a menos'}</span></div>` : ''}</div></div>
+      ${okAnt && Ta.desp > 0.004 ? `<div class="small" style="margin-top:3px">${seloVar(T.desp, Ta.desp, true)} <span class="muted">${esc(brl0(Math.abs(dif)))} ${dif >= 0 ? 'acima' : 'abaixo'} do normal</span></div>` : ''}</div></div>
+    ${acima.length ? `<div class="tiny" style="margin:2px 0 6px;color:var(--tx2)">${ti('trending-up', 14, 'style="vertical-align:-2px;color:var(--red)"')} Gastou mais que o normal em: ${acima.map(([k, d]) => `<b>${esc(k || 'Sem categoria')}</b> (+${esc(brl0(d))})`).join(', ')}${ritmoMes(V.mes, 1) ? ' até agora' : ''}</div>` : ''}
     ${mostrar.map(([k, v]) => { const ab = V.abreCat === k, o = (S.orc || {})[k];
       return `<div class="linha" data-cat="${esc(k)}" style="cursor:pointer">${catIc('despesa', k, 34)}<div class="mid"><div class="row between"><span class="t">${esc(k || 'Sem categoria')}</span><span class="v">${esc(brl(v))}</span></div>
         <div class="row between" style="margin-top:2px"><span class="tiny">${Math.round(v / tot * 100)}% do total${o ? ' · limite ' + esc(brl0(o)) : ''}</span>${seloVar(v, Ta.porCat[k] || 0, okAnt)}</div>
@@ -1961,7 +1998,7 @@ function cardParaOnde(T, Ta, okAnt) {
           return `<div style="margin:0 0 6px 45px;border-left:2px solid ${catInfo('despesa', k).cor}33;padding-left:10px">${subs.map(([sb, x]) => `<div class="row between" data-catsub="${esc(k)}|${esc(sb)}" style="padding:6px 0;cursor:pointer;gap:8px"><span class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sb || (k ? 'Sem subcategoria' : 'Sem categoria'))}</span><span class="row" style="gap:6px"><span class="small" style="font-weight:600">${esc(brl(x))}</span>${seloVar(x, sa[sb] || 0, okAnt)}</span></div>`).join('')}
           <button class="btn sm" data-catver="${esc(k)}" style="margin:4px 0 2px">${ti('list', 15)} Ver lançamentos</button></div>`; })() : ''}`; }).join('')}
     ${cats.length > 4 ? `<button class="btn full sm" data-todascat style="margin-top:8px;background:none;color:var(--acc2)">${V.todasCat ? 'Mostrar só as maiores' : 'Ver todas as categorias (' + cats.length + ')'}</button>` : ''}
-    ${!okAnt ? '<p class="tiny" style="margin:6px 0 0">Sem extrato do mês passado para comparar.</p>' : ''}</div>`;
+    ${!okAnt ? '<p class="tiny" style="margin:6px 0 0">Sem extrato de meses anteriores para comparar.</p>' : `<p class="tiny" style="margin:6px 0 0">As setas comparam com a ${Ta.n > 1 ? 'média dos últimos ' + Ta.n + ' meses com extrato' : 'o mês anterior'}.</p>`}</div>`;
 }
 function cardFluxoConta(L, mk) {
   const A = L.filter(x => x.m && x.m.ini != null && ['conta', 'beneficio', 'invest'].includes(x.c.tipo)); if (!A.length) return '';
@@ -2014,14 +2051,15 @@ function rResumo() {
     ${pv && (pv.entra || pv.falta) ? `<div class="tiny" style="margin-top:4px">Previsto no fim do mês: ${pv.res < 0 ? '− ' : '+ '}${esc(brl(Math.abs(pv.res)))}</div>` : ''}</div>
   ${cardFalta(mk)}
   ${cardFaturas(mk)}
-  ${cardParaOnde(T, Ta, okAnt)}
+  ${(() => { const Tm = mediaGastos(mk); return cardParaOnde(T, Tm, Tm.n > 0); })()}
   ${cardFluxoConta(L, mk)}
   ${recs.length ? `<div class="card" id="de-onde"><div class="row between"><h2 style="margin:0">De onde veio</h2><b class="small" style="color:var(--grn)">${esc(brl(T.ent))}</b></div>
     ${recs.map(([k, v]) => `<div class="linha" data-reccat="${esc(k)}" style="cursor:pointer">${k === 'Empréstimos recebidos' ? icBox('cash', '#B26B00', 34) : catIc('receita', k, 34)}<div class="mid"><div class="row between"><span class="t">${esc(k || 'Sem categoria')}</span><span class="v" style="color:var(--grn)">${esc(brl(v))}</span></div><div class="row between"><span class="tiny">${Math.round(v / T.ent * 100)}% das receitas${k === 'Empréstimos recebidos' ? ' · vira dívida' : ''}</span>${seloVar(v, Ta.porRec[k] || 0, okAnt)}</div></div></div>`).join('')}
     ${V.quem === 'all' ? '<p class="tiny" style="margin:8px 0 0">Pix entre vocês e transferências entre contas não entram aqui.</p>' : ''}</div>` : ''}
   ${graficoAcumulado()}
   ${rec.length ? `<div class="card"><div class="row between"><h2 style="margin:0">Cobranças que se repetem</h2><button class="btn sm" data-tab="fixas">Ver</button></div><p class="tiny" style="margin:4px 0 2px">Aparecem todo mês com o mesmo valor. Confira se ainda usam cada uma.</p>
-    ${rec.map(r => `<div class="linha" data-virafixa="${esc(r.chave)}" style="cursor:pointer">${catIc('despesa', r.cat, 34)}<div class="mid"><div class="t">${esc(r.nome)}</div><div class="s">${r.meses} meses seguidos · ${esc(r.conta)}</div></div><div class="v">${esc(brl(r.valor))}<div class="tiny">por mês</div></div></div>`).join('')}</div>` : ''}`;
+    ${rec.map(r => `<div class="linha" data-virafixa="${esc(r.chave)}" style="cursor:pointer">${catIc('despesa', r.cat, 34)}<div class="mid"><div class="t">${esc(r.nome)}</div><div class="s">${r.meses} meses seguidos · ${esc(r.conta)}</div></div><div class="v">${esc(brl(r.valor))}<div class="tiny">por mês</div></div><button class="iconbtn" data-recign="${esc(r.chave)}" aria-label="Não perguntar mais" style="width:28px;height:28px;box-shadow:none;background:none;color:var(--tx3)">${ti('x', 15)}</button></div>`).join('')}
+    <p class="tiny" style="margin:6px 0 0">Toque para virar conta fixa · ${ti('x', 12, 'style="vertical-align:-2px"')} para não perguntar mais.</p></div>` : ''}`;
 }
 document.addEventListener('click', e => {
   const pg = e.target.closest('[data-pagar]'); if (pg) { e.stopPropagation(); marcaPago(pg.dataset.pagar); return; }
@@ -2132,17 +2170,31 @@ function progressoMeta(m) {
   const c = m.cofre && conta(m.cofre); const tem = c ? Math.max(0, saldoConta(c) || 0) : (m.guardado || 0);
   const pct = m.alvo > 0 ? tem / m.alvo * 100 : 0; let porMes = null;
   if (m.prazo && tem < m.alvo) { const n = Math.max(1, difMeses(mkey(today()), m.prazo) + 1); porMes = (m.alvo - tem) / n; }
-  return { tem, pct, porMes };
+  // ritmo real: quanto entrou por mês no cofrinho da meta nos últimos 3 meses fechados
+  let ritmo = null, chega = null, atraso = null;
+  if (c && !c.semSaldo) { const hm = mkey(today()), L = live().filter(t => t.conta === c.id), ini = L.reduce((a, t) => !a || t.data < a ? t.data : a, '');
+    const ms = [1, 2, 3].map(i => addMonth(hm, -i)).filter(mm => ini && mm >= mkey(ini));
+    if (ms.length) { ritmo = ms.reduce((a, mm) => a + L.filter(t => mkey(t.data) === mm).reduce((b, t) => b + t.valor, 0), 0) / ms.length;
+      if (ritmo > 0.5 && tem < m.alvo) { chega = addMonth(hm, Math.ceil((m.alvo - tem) / ritmo)); if (m.prazo) atraso = difMeses(m.prazo.slice(0, 7), chega); } } }
+  return { tem, pct, porMes, ritmo, chega, atraso };
+}
+const mesAno = mm => MESC[+mm.slice(5) - 1] + '/' + mm.slice(0, 4);
+function metaRitmo(m, g) {
+  if (g.tem >= m.alvo || g.ritmo == null) return '';
+  if (!(g.ritmo > 0.5)) return `<div class="tiny" style="margin-top:3px;color:var(--amb)">Nos últimos meses não entrou dinheiro nessa meta.</div>`;
+  const base = `Guardando ${esc(brl(g.ritmo))}/mês (média dos últimos meses), chega em ${esc(mesAno(g.chega))}`;
+  if (g.atraso == null) return `<div class="tiny" style="margin-top:3px">${base}.</div>`;
+  return g.atraso > 0 ? `<div class="tiny" style="margin-top:3px;color:var(--amb)">${base}: ${g.atraso} ${g.atraso > 1 ? 'meses' : 'mês'} depois do prazo.</div>` : `<div class="tiny" style="margin-top:3px;color:var(--grn)">${base}: ${g.atraso < 0 ? 'antes do prazo' : 'no prazo'}.</div>`;
 }
 function rMetas() {
   const M = S.metas || [], T = totaisMes(V.mes), lim = Object.entries(S.orc || {}).filter(([, o]) => o > 0);
   $('#app').innerHTML = `${navMes(false)}
   <div class="row between" style="margin:4px 2px 8px"><b>Guardar dinheiro</b><button class="btn sm pri" data-nmeta="guardar">${ti('plus', 15)} Nova meta</button></div>
   ${M.length ? M.map(m => { const g = progressoMeta(m); return `<div class="card" data-emeta="${m.id}" style="cursor:pointer"><div class="row" style="gap:11px">${icBox(m.ic || 'shield-check', '#6D5FD9', 38)}<div style="flex:1;min-width:0"><div class="row between"><b>${esc(m.nome)}</b><span class="tiny">${Math.round(g.pct)}%</span></div><div class="tiny">${esc(brl(g.tem))} de ${esc(brl(m.alvo))}${m.prazo ? ' · até ' + MESC[+m.prazo.slice(5) - 1] + '/' + m.prazo.slice(0, 4) : ''}${m.cofre && conta(m.cofre) ? ' · ' + esc(conta(m.cofre).nome) : ''}</div></div></div>
-      <div class="prog"><i style="width:${Math.min(100, g.pct)}%;background:var(--vio)"></i></div><div class="tiny">${g.tem >= m.alvo ? 'Meta alcançada!' : g.porMes ? 'Guarde ' + esc(brl(g.porMes)) + ' por mês para chegar lá' : 'Use o Guardar do + para alimentar a meta'}</div></div>`; }).join('')
+      <div class="prog"><i style="width:${Math.min(100, g.pct)}%;background:var(--vio)"></i></div><div class="tiny">${g.tem >= m.alvo ? 'Meta alcançada!' : g.porMes ? 'Guarde ' + esc(brl(g.porMes)) + ' por mês para chegar lá' : 'Use o Guardar do + para alimentar a meta'}</div>${metaRitmo(m, g)}</div>`; }).join('')
     : `<div class="card empty small">${ti('target', 30)}<br>Crie uma meta para guardar dinheiro, como uma reserva de emergência.<br>O app mostra quanto falta e quanto guardar por mês.</div>`}
   <div class="row between" style="margin:16px 2px 8px"><b>Limite de gasto por mês</b><button class="btn sm" data-nmeta="limite">${ti('plus', 15)} Novo limite</button></div>
-  ${lim.length ? `<div class="card">${lim.map(([k, o]) => { const v = T.porCat[k] || 0, p = v / o * 100; return `<div class="linha" data-elim="${esc(k)}" style="cursor:pointer">${catIc('despesa', k, 34)}<div class="mid"><div class="row between"><span class="t">${esc(k)} até ${esc(brl0(o))}</span>${v > o ? '<span class="selo up">passou</span>' : `<span class="tiny">${Math.round(p)}%</span>`}</div><div class="tiny">Gasto ${esc(brl(v))} em ${esc(MES[+V.mes.slice(5) - 1].toLowerCase())}</div>
+  ${lim.length ? `<div class="card">${lim.map(([k, o]) => { const v = T.porCat[k] || 0, p = v / o * 100; return `<div class="linha" data-elim="${esc(k)}" style="cursor:pointer">${catIc('despesa', k, 34)}<div class="mid"><div class="row between"><span class="t">${esc(k)} até ${esc(brl0(o))}</span>${v > o ? '<span class="selo up">passou</span>' : `<span class="tiny">${Math.round(p)}%</span>`}</div><div class="tiny">Gasto ${esc(brl(v))} em ${esc(MES[+V.mes.slice(5) - 1].toLowerCase())}${(() => { const rt = ritmoMes(V.mes, v); return rt && v <= o ? ` · faltam ${rt.faltam} dias${rt.dia >= 5 && rt.proj > o ? ` · <span style="color:var(--amb)">no ritmo atual fecha em ${esc(brl0(rt.proj))}</span>` : ''}` : ''; })()}</div>
       <div class="prog"><i style="width:${Math.min(100, p)}%;background:${v > o ? 'var(--red)' : p > 80 ? 'var(--amb)' : 'var(--acc)'}"></i></div></div></div>`; }).join('')}</div>`
     : `<div class="card empty small">Defina um teto para uma categoria (ex.: Mercado até R$ 2.500). A barra enche no mês e avisa no Início quando passar.</div>`}`;
 }
@@ -2237,7 +2289,7 @@ function recorrentes() {
     const k = P.norm(t.nome || t.desc).replace(/\d+\/\d+$/, '').trim(); if (k.length < 3) continue;
     if (!g.has(k)) g.set(k, []); g.get(k).push(t);
   }
-  const fixasK = (S.fixas || []).map(f => P.norm(f.chave || f.nome));
+  const fixasK = (S.fixas || []).map(f => P.norm(f.chave || f.nome)), ign = new Set(S.recIgn || []);
   const out = [];
   for (const [k, L] of g) {
     const porMes = {}; for (const t of L) (porMes[mkey(t.data)] = porMes[mkey(t.data)] || []).push(t);
@@ -2247,7 +2299,7 @@ function recorrentes() {
     if (best < 2 || ms[ms.length - 1] < addMonth(mkey(ult), -1)) continue;
     const vals = L.map(t => -t.valor).sort((a, b) => a - b), med = vals[Math.floor(vals.length / 2)];
     if (vals.some(v => Math.abs(v - med) > med * 0.1 + 0.01)) continue;
-    if (fixasK.some(f => f && (k.includes(f) || f.includes(k)))) continue;
+    if (fixasK.some(f => f && (k.includes(f) || f.includes(k))) || ign.has(k)) continue;
     const ex = L[L.length - 1];
     out.push({ chave: k, nome: ex.nome || ex.desc, valor: med, meses: best, cat: ex.cat, sub: ex.sub, conta: (conta(ex.conta) || {}).nome || '', dono: (conta(ex.conta) || {}).dono, dia: +ex.data.slice(8, 10) });
   }
@@ -2263,7 +2315,7 @@ function rFixas() {
   if (!F.length) h += `<div class="empty small">Cadastre o que se repete: salário, água, luz, internet, financiamento, parcela do vendedor…</div>`;
   else h += `<div class="list" style="margin-top:6px">${F.map(f => { const pg = fixaPaga(f, mk); return `<div class="it" data-efixa="${f.id}">${f.ic ? icBox(f.ic, f.cor || catInfo(f.tipo, f.cat).cor, 36) : catIc(f.tipo, f.cat, 36, f.sub)}<div class="mid"><div class="t">${esc(f.nome)}</div><div class="s">${donoTag(f.dono)} dia ${f.dia} · ${pg ? `<span class="ok">${ti('check', 13, 'style="vertical-align:-2px"')} ${f.tipo === 'receita' ? 'entrou' : 'paga'} em ${dshort(pg.data)}</span>` : `<span class="pend">pendente</span>`}</div></div><div class="val ${f.tipo === 'receita' ? 'pos' : ''}">${esc(brl(pg ? Math.abs(pg.valor) : f.valor))}</div></div>`; }).join('')}</div>`;
   h += `</div>`;
-  if (rec.length) h += `<div class="card"><h2>Sugestões</h2><p class="small muted" style="margin-top:-4px">Cobranças que apareceram em meses seguidos com o mesmo valor. Toque para virar conta fixa.</p><div class="list">${rec.map(r => `<div class="it" data-virafixa="${esc(r.chave)}">${catIc('despesa', r.cat, 36)}<div class="mid"><div class="t">${esc(r.nome)}</div><div class="s">${r.meses} meses seguidos · ${esc(r.conta)}</div></div><div class="val">${esc(brl(r.valor))}</div></div>`).join('')}</div></div>`;
+  if (rec.length) h += `<div class="card"><h2>Sugestões</h2><p class="small muted" style="margin-top:-4px">Cobranças que apareceram em meses seguidos com o mesmo valor. Toque para virar conta fixa, ou no ${ti('x', 12, 'style="vertical-align:-2px"')} para não perguntar mais.</p><div class="list">${rec.map(r => `<div class="it" data-virafixa="${esc(r.chave)}">${catIc('despesa', r.cat, 36)}<div class="mid"><div class="t">${esc(r.nome)}</div><div class="s">${r.meses} meses seguidos · ${esc(r.conta)}</div></div><div class="val">${esc(brl(r.valor))}</div><button class="iconbtn" data-recign="${esc(r.chave)}" aria-label="Não perguntar mais" style="width:28px;height:28px;box-shadow:none;background:none;color:var(--tx3)">${ti('x', 15)}</button></div>`).join('')}</div></div>`;
   $('#app').innerHTML = h;
   $('#nova-fixa').onclick = () => editarFixa(null);
 }
@@ -2271,6 +2323,9 @@ document.addEventListener('click', e => {
   const f = e.target.closest('[data-efixa]'); if (f) editarFixa((S.fixas || []).find(x => x.id === f.dataset.efixa));
   const r = e.target.closest('[data-virafixa]'); if (r) { const x = recorrentes().find(y => y.chave === r.dataset.virafixa); if (x) editarFixa(null, { nome: x.nome, chave: x.chave, valor: x.valor, dia: x.dia, tipo: 'despesa', cat: x.cat, sub: x.sub, dono: x.dono || S.eu }); }
 });
+const ignoraRec = k => { S.recIgn = [...new Set([...(S.recIgn || []), k])]; S.recIgnUpd = Date.now(); save(false); };
+document.addEventListener('click', e => { const b = e.target.closest('[data-recign]'); if (!b) return; e.stopPropagation(); e.preventDefault(); const k = b.dataset.recign; ignoraRec(k); const y = window.scrollY; render(); window.scrollTo(0, y);
+  toastDesfazer('Não vai mais sugerir essa cobrança', () => { S.recIgn = (S.recIgn || []).filter(x => x !== k); S.recIgnUpd = Date.now(); save(false); render(); }); }, true);
 function editarFixa(f, sug) {
   const novo = !f; const b = f || Object.assign({ id: 'fx:' + uid(), nome: '', tipo: 'despesa', cat: '', sub: '', valor: 0, dia: 10, dono: S.eu, chave: '' }, sug || {});
   const s = sheet(`<div class="row between"><h2 style="margin:0">${novo ? 'Nova conta fixa' : 'Editar conta fixa'}</h2><button class="iconbtn" data-fechar aria-label="Fechar">${ti('x')}</button></div>
@@ -2788,7 +2843,8 @@ function editarTx(t, modo) {
     s.querySelectorAll('[data-np]').forEach(x => x.classList.toggle('on', +x.dataset.np === np));
     if (!ehCart(c)) { r.textContent = ''; return; }
     const v1 = s.querySelector('#ed-venc').value || vencDe(c, s.querySelector('#ed-data').value || today());
-    r.textContent = (np > 1 && v ? np + 'x de ' + brl(Math.floor(v / np * 100) / 100) : np > 1 ? np + ' parcelas' : 'À vista') + (v1 ? ' · ' + (np > 1 ? '1ª vence ' : 'vence ') + dshort(v1) : '');
+    const dc = s.querySelector('#ed-data').value || today(), md = melhorDia(c), dd = +dc.slice(8);
+    r.textContent = (np > 1 && v ? np + 'x de ' + brl(Math.floor(v / np * 100) / 100) : np > 1 ? np + ' parcelas' : 'À vista') + (v1 && cobraDe(c) === 'fatura' ? ' · entra na fatura de ' + MES[+v1.slice(5, 7) - 1].toLowerCase() : '') + (v1 ? ' · ' + (np > 1 ? '1ª vence ' : 'vence ') + dshort(v1) : '') + (md ? (dd === md ? ' · melhor dia de compra ✓' : ' · melhor dia: ' + md) : '');
   }
   s.querySelectorAll('[data-np]').forEach(x => x.onclick = () => { s.querySelector('#ed-np').value = x.dataset.np; npRes(); });
   ['#ed-np', '#ed-val', '#ed-data', '#ed-venc', '#ed-conta'].forEach(id => { const el = s.querySelector(id); if (el) el.addEventListener(id === '#ed-conta' ? 'change' : 'input', npRes); });
@@ -4080,7 +4136,7 @@ function listaContas(L) {
 }
 function itemConta(c, dentro) {
   const pp = c.pagaPor && conta(c.pagaPor);
-  const sub = dentro ? (c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'Cotas capital' : 'Cofrinho') : (TIPOS_CONTA[c.tipo] || '') + (pp ? ' · paga pela conta ' + pp.nome : '') + (ehCart(c) ? (cobraDe(c) === 'fatura' ? (c.fech ? ' · melhor dia ' + c.fech : c.tipo === 'cartao' ? ' · configurar fechamento' : '') : ' · ' + COBRA[cobraDe(c)].toLowerCase()) + (c.limite ? ' · limite ' + brl0(c.limite) : '') : '');
+  const sub = dentro ? (c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'Cotas capital' : 'Cofrinho') : (TIPOS_CONTA[c.tipo] || '') + (pp ? ' · paga pela conta ' + pp.nome : '') + (ehCart(c) ? (cobraDe(c) === 'fatura' ? (c.fech ? (+today().slice(8) === c.fech ? ' · hoje é o melhor dia de compra' : ' · melhor dia ' + c.fech) : c.tipo === 'cartao' ? ' · configurar fechamento' : '') : ' · ' + COBRA[cobraDe(c)].toLowerCase()) + (c.limite ? ' · limite ' + brl0(c.limite) : '') : '');
   if (dentro) { const s = saldoConta(c); return `<div class="it" data-editconta="${c.id}" style="padding-left:22px"><div class="ic" style="width:32px;height:32px;background:var(--accbg);color:var(--acc)">${ti(c.capital || /^COTAS CAPITAL/.test(P.norm(c.nome)) ? 'coins' : 'pig', 18)}</div><div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small">${esc(brl(s))}</div>` : '<span class="tag amb">informar</span>'}</div>`; }
   const s = ['conta', 'invest', 'beneficio'].includes(c.tipo) ? saldoConta(c) : null;
   return `<div class="it" ${ehCart(c) ? 'data-cartaod' : 'data-editconta'}="${c.id}">${logoBanco(c)}<div class="mid"><div class="t">${esc(c.nome)}</div><div class="s">${esc(sub)}</div></div>${s != null ? `<div class="val small ${s < 0 ? 'neg' : ''}">${esc(brl(s))}</div>` : `<span style="color:var(--tx3)">${ic('right', 'width="18" height="18"')}</span>`}</div>`;
@@ -4103,7 +4159,7 @@ function detalheCartaoSheet(c) {
   if (!c) return;
   const k = cobraDe(c), A = abertoCartao(c), hoje = today(), hm = mkey(hoje);
   const lim = c.limite || 0, pct = lim ? Math.min(100, A.total / lim * 100) : 0, livre = lim - A.total;
-  const meses = Object.entries(A.porMes).filter(([, v]) => v > 0.004).sort().slice(0, 4);
+  const meses = Object.entries(A.porMes).filter(([, v]) => v > 0.004).sort().slice(0, 6);
   const md = melhorDia(c), prox = meses[0];
   const cab = k === 'fatura' ? (c.fech && c.venc ? 'Fecha dia ' + c.fech + ' · vence dia ' + c.venc : 'Configurar fechamento e vencimento') : k === 'prazo' ? 'Cada compra vence em ' + (c.prazo || '?') + ' dias' : 'Parcelas mensais' + (c.diaParc ? ' · vencem dia ' + c.diaParc : '');
   const nomeMes = m => MES[+m.slice(5) - 1] + (m.slice(0, 4) !== hoje.slice(0, 4) ? ' ' + m.slice(0, 4) : '');
